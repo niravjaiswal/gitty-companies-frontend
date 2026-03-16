@@ -47,16 +47,16 @@ const SendAssessment = () => {
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </button>
 
-        <h1 className="font-mono text-2xl text-foreground mb-2">Send Assessment</h1>
+        <h1 className="font-display text-2xl text-foreground mb-2">Send Assessment</h1>
         <p className="text-sm text-muted-foreground mb-10 font-sans">
           Invite candidates to take this assessment.
         </p>
 
         {/* Shareable link */}
         <GlassCard hover={false} className="mb-8">
-          <p className="font-mono text-xs text-muted-foreground tracking-wider uppercase mb-3">Shareable Link</p>
+          <p className="font-display text-xs text-muted-foreground tracking-wider uppercase mb-3">Shareable Link</p>
           <div className="flex gap-2">
-            <Input value={link} readOnly className="bg-secondary/30 border-border text-sm font-mono" />
+            <Input value={link} readOnly className="bg-secondary/30 border-border text-sm font-display" />
             <LiquidButton variant="outline" onClick={handleCopy} className="shrink-0 px-3">
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </LiquidButton>
@@ -65,7 +65,7 @@ const SendAssessment = () => {
 
         {/* Email invite */}
         <GlassCard hover={false} className="mb-8">
-          <p className="font-mono text-xs text-muted-foreground tracking-wider uppercase mb-3">Email Invite</p>
+          <p className="font-display text-xs text-muted-foreground tracking-wider uppercase mb-3">Email Invite</p>
           <div className="flex gap-2">
             <Input
               value={email}
@@ -82,13 +82,13 @@ const SendAssessment = () => {
 
         {/* Sent list */}
         <div>
-          <p className="font-mono text-xs text-muted-foreground tracking-wider uppercase mb-4">Sent Invitations</p>
+          <p className="font-display text-xs text-muted-foreground tracking-wider uppercase mb-4">Sent Invitations</p>
           <div className="space-y-2">
             {mockSent.map((inv) => (
               <GlassCard key={inv.email} hover={false} className="flex items-center justify-between py-4">
                 <span className="text-sm text-foreground font-sans">{inv.email}</span>
                 <span
-                  className={`text-xs font-mono uppercase tracking-wider ${
+                  className={`text-xs font-display uppercase tracking-wider ${
                     inv.status === "completed"
                       ? "text-green-400"
                       : inv.status === "opened"

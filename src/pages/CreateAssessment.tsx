@@ -45,7 +45,7 @@ const CreateAssessment = () => {
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs liquid-transition ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center font-display text-xs liquid-transition ${
                   s <= step ? "bg-primary text-primary-foreground" : "glass text-muted-foreground"
                 }`}
               >
@@ -59,7 +59,7 @@ const CreateAssessment = () => {
         {/* Step 1 — Source */}
         {step === 1 && (
           <div className="animate-fade-in">
-            <h2 className="font-mono text-2xl text-foreground mb-2">Choose Source</h2>
+            <h2 className="font-display text-2xl text-foreground mb-2">Choose Source</h2>
             <p className="text-sm text-muted-foreground mb-8 font-sans">How would you like to create this assessment?</p>
 
             <div className="grid gap-4 mb-8">
@@ -73,7 +73,7 @@ const CreateAssessment = () => {
                     <opt.icon className={`w-5 h-5 ${source === opt.id ? "text-primary" : "text-muted-foreground"}`} />
                   </div>
                   <div>
-                    <p className="font-mono text-sm text-foreground">{opt.label}</p>
+                    <p className="font-display text-sm text-foreground">{opt.label}</p>
                     <p className="text-xs text-muted-foreground font-sans">{opt.desc}</p>
                   </div>
                 </GlassCard>
@@ -82,7 +82,7 @@ const CreateAssessment = () => {
 
             {source === "github" && (
               <div className="animate-fade-in">
-                <label className="font-mono text-xs text-muted-foreground tracking-wider uppercase block mb-2">Repository URL</label>
+                <label className="font-display text-xs text-muted-foreground tracking-wider uppercase block mb-2">Repository URL</label>
                 <Input
                   value={repoUrl}
                   onChange={(e) => setRepoUrl(e.target.value)}
@@ -93,7 +93,7 @@ const CreateAssessment = () => {
             )}
             {source === "prd" && (
               <div className="animate-fade-in">
-                <label className="font-mono text-xs text-muted-foreground tracking-wider uppercase block mb-2">PRD Content</label>
+                <label className="font-display text-xs text-muted-foreground tracking-wider uppercase block mb-2">PRD Content</label>
                 <Textarea
                   value={prdContent}
                   onChange={(e) => setPrdContent(e.target.value)}
@@ -105,7 +105,7 @@ const CreateAssessment = () => {
             {source === "generate" && (
               <GlassCard hover={false} className="text-center py-8 animate-fade-in">
                 <Sparkles className="w-8 h-8 text-primary mx-auto mb-3" />
-                <p className="font-mono text-sm text-muted-foreground">AI generation will be configured in the next step</p>
+                <p className="font-display text-sm text-muted-foreground">AI generation will be configured in the next step</p>
               </GlassCard>
             )}
           </div>
@@ -115,25 +115,25 @@ const CreateAssessment = () => {
         {step === 2 && (
           <div className="animate-fade-in space-y-6">
             <div>
-              <h2 className="font-mono text-2xl text-foreground mb-2">Configure</h2>
+              <h2 className="font-display text-2xl text-foreground mb-2">Configure</h2>
               <p className="text-sm text-muted-foreground font-sans">Set up your assessment parameters.</p>
             </div>
             <div>
-              <label className="font-mono text-xs text-muted-foreground tracking-wider uppercase block mb-2">Assessment Title</label>
+              <label className="font-display text-xs text-muted-foreground tracking-wider uppercase block mb-2">Assessment Title</label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Senior Frontend Engineer" className="bg-secondary/30 border-border focus:border-primary" />
             </div>
             <div>
-              <label className="font-mono text-xs text-muted-foreground tracking-wider uppercase block mb-2">Time Limit (minutes)</label>
+              <label className="font-display text-xs text-muted-foreground tracking-wider uppercase block mb-2">Time Limit (minutes)</label>
               <Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} className="bg-secondary/30 border-border focus:border-primary" />
             </div>
             <div>
-              <label className="font-mono text-xs text-muted-foreground tracking-wider uppercase block mb-2">Difficulty</label>
+              <label className="font-display text-xs text-muted-foreground tracking-wider uppercase block mb-2">Difficulty</label>
               <div className="flex gap-3">
                 {["easy", "medium", "hard"].map((d) => (
                   <button
                     key={d}
                     onClick={() => setDifficulty(d)}
-                    className={`px-4 py-2 rounded-lg font-mono text-xs uppercase tracking-wider liquid-transition ${
+                    className={`px-4 py-2 rounded-lg font-display text-xs uppercase tracking-wider liquid-transition ${
                       difficulty === d
                         ? "bg-primary text-primary-foreground"
                         : "glass text-muted-foreground hover:text-foreground"
@@ -150,24 +150,24 @@ const CreateAssessment = () => {
         {/* Step 3 — Review */}
         {step === 3 && (
           <div className="animate-fade-in">
-            <h2 className="font-mono text-2xl text-foreground mb-2">Review & Publish</h2>
+            <h2 className="font-display text-2xl text-foreground mb-2">Review & Publish</h2>
             <p className="text-sm text-muted-foreground mb-8 font-sans">Confirm your assessment details.</p>
 
             <GlassCard hover={false} className="space-y-4">
               <div className="flex justify-between">
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Title</span>
+                <span className="text-xs font-display text-muted-foreground uppercase tracking-wider">Title</span>
                 <span className="text-sm text-foreground font-sans">{title || "Untitled"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Source</span>
+                <span className="text-xs font-display text-muted-foreground uppercase tracking-wider">Source</span>
                 <span className="text-sm text-foreground font-sans capitalize">{source}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Time Limit</span>
+                <span className="text-xs font-display text-muted-foreground uppercase tracking-wider">Time Limit</span>
                 <span className="text-sm text-foreground font-sans">{timeLimit} min</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Difficulty</span>
+                <span className="text-xs font-display text-muted-foreground uppercase tracking-wider">Difficulty</span>
                 <span className="text-sm text-foreground font-sans capitalize">{difficulty}</span>
               </div>
             </GlassCard>

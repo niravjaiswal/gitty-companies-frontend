@@ -11,7 +11,7 @@ const GlassNav = ({ variant = "landing" }: GlassNavProps) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="font-mono text-lg tracking-wider text-foreground hover:text-primary liquid-transition">
+        <Link to="/" className="font-display text-lg tracking-wider text-foreground hover:text-primary liquid-transition">
           TECHASSESS
         </Link>
 

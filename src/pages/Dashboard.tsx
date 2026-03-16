@@ -39,8 +39,8 @@ const Dashboard = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
           <div>
-            <p className="font-mono text-xs text-primary tracking-[0.3em] uppercase mb-2">Dashboard</p>
-            <h1 className="font-mono text-3xl text-foreground">Your Assessments</h1>
+            <p className="font-display text-xs text-primary tracking-[0.3em] uppercase mb-2">Dashboard</p>
+            <h1 className="font-display text-3xl text-foreground">Your Assessments</h1>
           </div>
           <LiquidButton onClick={() => navigate("/dashboard/create")}>
             + New Assessment
@@ -51,10 +51,10 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           {stats.map((s) => (
             <GlassCard key={s.label} hover={false} className="text-center py-8">
-              <div className={`text-3xl font-mono mb-1 ${s.accent ? "text-primary" : "text-foreground"}`}>
+              <div className={`text-3xl font-display mb-1 ${s.accent ? "text-primary" : "text-foreground"}`}>
                 {s.value}
               </div>
-              <div className="text-xs font-mono text-muted-foreground tracking-wider uppercase">{s.label}</div>
+              <div className="text-xs font-display text-muted-foreground tracking-wider uppercase">{s.label}</div>
             </GlassCard>
           ))}
         </div>
@@ -85,11 +85,11 @@ const Dashboard = () => {
                         : "bg-green-500"
                     }`}
                   />
-                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                  <span className="text-xs font-display text-muted-foreground uppercase tracking-wider">
                     {assessment.status}
                   </span>
                 </div>
-                <h3 className="font-mono text-lg text-foreground mb-1">{assessment.title}</h3>
+                <h3 className="font-display text-lg text-foreground mb-1">{assessment.title}</h3>
                 <p className="text-xs text-muted-foreground font-sans">Created {assessment.created}</p>
               </div>
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">

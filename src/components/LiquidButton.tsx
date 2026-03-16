@@ -26,7 +26,7 @@ const LiquidButton = ({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "relative font-mono text-sm tracking-wider uppercase liquid-transition rounded-lg overflow-hidden",
+        "relative font-display text-sm tracking-wider uppercase liquid-transition rounded-lg overflow-hidden",
         "disabled:opacity-40 disabled:cursor-not-allowed",
         size === "default" && "px-6 py-3",
         size === "lg" && "px-10 py-4 text-base",
