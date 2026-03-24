@@ -1,116 +1,330 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import GlassCard from "@/components/GlassCard";
-import GlassNav from "@/components/GlassNav";
-import LiquidButton from "@/components/LiquidButton";
-import LiquidBlobs from "@/components/LiquidBlobs";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import GlassNav from '@/components/GlassNav';
+import LiquidButton from '@/components/LiquidButton';
+import { Input } from '@/components/ui/input';
+import { apiFetch } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArrowRight, Building2, Plus, Search, Sparkles } from 'lucide-react';
 
-const mockAssessments = [
-  { id: "1", title: "Full-Stack Engineer", status: "active", candidates: 42, created: "2 days ago" },
-  { id: "2", title: "Frontend React Challenge", status: "active", candidates: 18, created: "5 days ago" },
-  { id: "3", title: "System Design Interview", status: "draft", candidates: 0, created: "1 week ago" },
-  { id: "4", title: "DevOps Pipeline Task", status: "completed", candidates: 31, created: "2 weeks ago" },
-  { id: "5", title: "ML Model Evaluation", status: "active", candidates: 7, created: "3 days ago" },
-  { id: "6", title: "API Security Audit", status: "draft", candidates: 0, created: "1 day ago" },
-];
+interface CompanyInfo {
+  company: {
+    id: string;
+    name: string;
+    createdAt: string;
+  };
+  membership: {
+    companyId: string;
+    role: string;
+  };
+}
 
-const stats = [
-  { label: "Active", value: "3", accent: true },
-  { label: "Pending Review", value: "12", accent: false },
-  { label: "Total Candidates", value: "98", accent: false },
-];
+interface AssessmentSummary {
+  id: string;
+  title: string;
+  summary: string;
+  durationMinutes: number;
+  status: 'draft' | 'published' | 'archived';
+  publishedAt: string | null;
+  createdAt: string;
+  assignmentCount: number;
+  completedCount: number;
+  inProgressCount: number;
+}
 
-const Dashboard = () => {
+export default function Dashboard() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  const { signOut } = useAuth();
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
+  const [assessments, setAssessments] = useState<AssessmentSummary[]>([]);
+  const [search, setSearch] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [workspaceName, setWorkspaceName] = useState('');
+  const [bootstrapping, setBootstrapping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = mockAssessments.filter((a) =>
-    a.title.toLowerCase().includes(search.toLowerCase())
+  async function loadDashboard() {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const [companyRes, assessmentsRes] = await Promise.all([
+        apiFetch('/api/company/me'),
+        apiFetch('/api/company/assessments'),
+      ]);
+
+      if (companyRes.status === 404) {
+        setCompanyInfo(null);
+        setAssessments([]);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!companyRes.ok || !assessmentsRes.ok) {
+        throw new Error('Failed to load workspace');
+      }
+
+      const [companyData, assessmentsData] = await Promise.all([
+        companyRes.json(),
+        assessmentsRes.json(),
+      ]);
+
+      setCompanyInfo(companyData);
+      setAssessments(assessmentsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load workspace');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const filtered = useMemo(
+    () =>
+      assessments.filter((assessment) =>
+        `${assessment.title} ${assessment.summary}`.toLowerCase().includes(search.toLowerCase()),
+      ),
+    [assessments, search],
   );
 
+  const stats = useMemo(() => {
+    return {
+      published: assessments.filter((assessment) => assessment.status === 'published').length,
+      activeCandidates: assessments.reduce(
+        (sum, assessment) => sum + assessment.inProgressCount,
+        0,
+      ),
+      completions: assessments.reduce((sum, assessment) => sum + assessment.completedCount, 0),
+    };
+  }, [assessments]);
+
+  async function handleBootstrap() {
+    if (!workspaceName.trim()) return;
+
+    setBootstrapping(true);
+    setError(null);
+
+    try {
+      const res = await apiFetch('/api/company/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: workspaceName.trim() }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? 'Failed to create workspace');
+      }
+
+      await loadDashboard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create workspace');
+    } finally {
+      setBootstrapping(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background relative">
-      <LiquidBlobs />
+    <div className="min-h-screen bg-background text-foreground">
       <GlassNav variant="company" />
-
-      <div className="relative z-10 pt-24 px-6 max-w-7xl mx-auto pb-12">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
-          <div>
-            <p className="font-display text-xs text-primary tracking-[0.3em] uppercase mb-2">Dashboard</p>
-            <h1 className="font-display text-3xl text-foreground">Your Assessments</h1>
-          </div>
-          <LiquidButton onClick={() => navigate("/dashboard/create")}>
-            + New Assessment
-          </LiquidButton>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          {stats.map((s) => (
-            <GlassCard key={s.label} hover={false} className="text-center py-8">
-              <div className={`text-3xl font-display mb-1 ${s.accent ? "text-primary" : "text-foreground"}`}>
-                {s.value}
-              </div>
-              <div className="text-xs font-display text-muted-foreground tracking-wider uppercase">{s.label}</div>
-            </GlassCard>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search assessments..."
-            className="pl-11 bg-secondary/30 border-border focus:border-primary"
-          />
-        </div>
-
-        {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((assessment) => (
-            <GlassCard key={assessment.id} className="flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      assessment.status === "active"
-                        ? "bg-primary"
-                        : assessment.status === "draft"
-                        ? "bg-muted-foreground"
-                        : "bg-green-500"
-                    }`}
-                  />
-                  <span className="text-xs font-display text-muted-foreground uppercase tracking-wider">
-                    {assessment.status}
-                  </span>
-                </div>
-                <h3 className="font-display text-lg text-foreground mb-1">{assessment.title}</h3>
-                <p className="text-xs text-muted-foreground font-sans">Created {assessment.created}</p>
-              </div>
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
-                <span className="text-sm text-muted-foreground font-sans">
-                  {assessment.candidates} candidate{assessment.candidates !== 1 ? "s" : ""}
-                </span>
+      <div className="editorial-grid min-h-screen px-6 pb-12 pt-24">
+        {!companyInfo ? (
+          <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.3fr_0.8fr]">
+            <section className="editorial-panel relative overflow-hidden rounded-[2rem] p-8 md:p-12">
+              <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-primary/10 to-transparent" />
+              <p className="mb-4 text-xs uppercase tracking-[0.45em] text-primary/80">
+                Company Workspace
+              </p>
+              <h1 className="max-w-2xl text-4xl leading-tight md:text-6xl">
+                Turn this account into a hiring control room.
+              </h1>
+              <p className="mt-6 max-w-xl text-base text-white/62">
+                Create a company workspace, publish assessment briefs, and assign them to candidates
+                by email. Candidate sign-in will claim the assignment automatically.
+              </p>
+              <div className="mt-10 max-w-xl space-y-4">
+                <Input
+                  value={workspaceName}
+                  onChange={(event) => setWorkspaceName(event.target.value)}
+                  placeholder="Acme Hiring Lab"
+                  className="h-14 rounded-2xl border-white/10 bg-white/5 text-base"
+                />
                 <LiquidButton
-                  variant="ghost"
-                  size="default"
-                  onClick={() => navigate(`/dashboard/send/${assessment.id}`)}
-                  className="text-xs px-3 py-1.5"
+                  onClick={handleBootstrap}
+                  disabled={bootstrapping || !workspaceName.trim()}
+                  className="h-14 rounded-2xl px-8"
                 >
-                  Send →
+                  {bootstrapping ? 'Creating workspace...' : 'Create workspace'}
                 </LiquidButton>
               </div>
-            </GlassCard>
-          ))}
-        </div>
+              {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
+            </section>
+
+            <aside className="editorial-panel rounded-[2rem] p-8">
+              <div className="flex items-center gap-3 text-primary">
+                <Sparkles className="h-5 w-5" />
+                <span className="text-xs uppercase tracking-[0.35em]">V1 Scope</span>
+              </div>
+              <div className="mt-8 space-y-5 text-sm text-white/68">
+                <p>Manual authoring is live in this implementation.</p>
+                <p>GitHub import, PRD ingestion, and AI generation remain future work.</p>
+                <p>Candidates claim assignments through email-match on sign-in instead of email delivery.</p>
+              </div>
+            </aside>
+          </div>
+        ) : (
+          <div className="mx-auto max-w-7xl">
+            <section className="grid gap-6 lg:grid-cols-[1.35fr_0.75fr]">
+              <div className="editorial-panel rounded-[2rem] p-8 md:p-10">
+                <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.45em] text-primary/80">
+                      {companyInfo.company.name}
+                    </p>
+                    <h1 className="mt-4 max-w-2xl text-4xl leading-tight md:text-6xl">
+                      Assessments with real ownership, real assignment state, and no mock data.
+                    </h1>
+                  </div>
+                  <LiquidButton
+                    onClick={() => navigate('/dashboard/create')}
+                    className="h-12 rounded-full px-6"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    New assessment
+                  </LiquidButton>
+                </div>
+              </div>
+
+              <div className="editorial-panel rounded-[2rem] p-8">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs uppercase tracking-[0.35em] text-white/45">Access</p>
+                  <button
+                    onClick={signOut}
+                    className="text-sm text-white/55 transition-colors hover:text-white"
+                  >
+                    Sign out
+                  </button>
+                </div>
+                <div className="mt-6 space-y-4">
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/4 p-4">
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/45">Role</p>
+                    <p className="mt-2 text-2xl capitalize">{companyInfo.membership.role}</p>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/4 p-4">
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/45">Created</p>
+                    <p className="mt-2 text-lg">
+                      {new Date(companyInfo.company.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="mt-6 grid gap-4 md:grid-cols-3">
+              {[
+                ['Published', stats.published],
+                ['In progress', stats.activeCandidates],
+                ['Completed', stats.completions],
+              ].map(([label, value]) => (
+                <div key={label} className="editorial-panel rounded-[1.75rem] p-6">
+                  <p className="text-xs uppercase tracking-[0.35em] text-white/45">{label}</p>
+                  <p className="mt-4 text-4xl">{value}</p>
+                </div>
+              ))}
+            </section>
+
+            <section className="mt-6 editorial-panel rounded-[2rem] p-6">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by title or summary"
+                  className="h-12 rounded-full border-white/10 bg-white/5 pl-11"
+                />
+              </div>
+            </section>
+
+            {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
+
+            <section className="mt-6 grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((assessment, index) => (
+                <article
+                  key={assessment.id}
+                  className="editorial-panel group rounded-[2rem] p-6 transition-transform duration-500 hover:-translate-y-1"
+                  style={{ animationDelay: `${index * 80}ms` }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-white/55">
+                      {assessment.status}
+                    </span>
+                    <span className="text-sm text-white/45">{assessment.durationMinutes} min</span>
+                  </div>
+                  <h2 className="mt-6 text-3xl leading-tight">{assessment.title}</h2>
+                  <p className="mt-4 text-sm leading-6 text-white/60">
+                    {assessment.summary || assessment.instructionsMd}
+                  </p>
+
+                  <div className="mt-8 grid grid-cols-3 gap-3 text-center text-sm">
+                    <div className="rounded-[1.25rem] border border-white/8 bg-white/4 p-3">
+                      <div className="text-xl">{assessment.assignmentCount}</div>
+                      <div className="mt-1 text-[11px] uppercase tracking-[0.25em] text-white/40">
+                        Sent
+                      </div>
+                    </div>
+                    <div className="rounded-[1.25rem] border border-white/8 bg-white/4 p-3">
+                      <div className="text-xl">{assessment.inProgressCount}</div>
+                      <div className="mt-1 text-[11px] uppercase tracking-[0.25em] text-white/40">
+                        Live
+                      </div>
+                    </div>
+                    <div className="rounded-[1.25rem] border border-white/8 bg-white/4 p-3">
+                      <div className="text-xl">{assessment.completedCount}</div>
+                      <div className="mt-1 text-[11px] uppercase tracking-[0.25em] text-white/40">
+                        Done
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex items-center justify-between border-t border-white/8 pt-5">
+                    <span className="text-sm text-white/42">
+                      {new Date(assessment.createdAt).toLocaleDateString()}
+                    </span>
+                    <button
+                      onClick={() => navigate(`/dashboard/send/${assessment.id}`)}
+                      className="inline-flex items-center gap-2 text-sm text-primary transition-colors hover:text-white"
+                    >
+                      Manage
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            {filtered.length === 0 && (
+              <section className="mt-8 editorial-panel rounded-[2rem] p-10 text-center">
+                <Building2 className="mx-auto h-8 w-8 text-white/35" />
+                <h2 className="mt-5 text-3xl">No assessments match this view.</h2>
+                <p className="mx-auto mt-3 max-w-md text-sm text-white/58">
+                  Create a new assessment or clear the current search to see the full slate.
+                </p>
+              </section>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default Dashboard;
+}

@@ -4,6 +4,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 export default function LoginPage() {
   const { user, isLoading } = useAuth();
@@ -11,7 +12,31 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      navigate('/candidate', { replace: true });
+      let cancelled = false;
+
+      async function resolveHome() {
+        try {
+          const companyRes = await apiFetch('/api/company/me');
+          if (cancelled) return;
+
+          if (companyRes.ok) {
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+        } catch {
+          // Fall through to candidate home.
+        }
+
+        if (!cancelled) {
+          navigate('/candidate', { replace: true });
+        }
+      }
+
+      resolveHome();
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [user, isLoading, navigate]);
 

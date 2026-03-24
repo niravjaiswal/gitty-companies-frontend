@@ -4,50 +4,31 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import IDELayout from '@/components/IDE/IDELayout';
 import { apiFetch } from '@/lib/api';
 
-const mockQuestions = [
-  {
-    id: 1,
-    title: 'Implement a Rate Limiter',
-    description: `## Task
-
-Design and implement a rate limiter that restricts the number of requests a user can make within a given time window.
-
-### Requirements
-
-1. Support a **sliding window** algorithm
-2. Handle concurrent requests safely
-3. Return appropriate HTTP status codes (429 for rate-limited requests)
-4. Allow configuration of:
-   - Maximum requests per window
-   - Window duration in seconds
-
-### Example
-
-\`\`\`python
-limiter = RateLimiter(max_requests=100, window_seconds=60)
-limiter.is_allowed("user_123")  # True
-\`\`\`
-
-### Constraints
-- Time complexity: O(1) per request
-- Space complexity: O(n) where n = number of unique users`,
-  },
-];
+interface SessionDetail {
+  id: string;
+  status: string;
+  codeServerUrl: string | null;
+  assessment: {
+    id: string;
+    title: string;
+    summary: string;
+    instructionsMd: string;
+    durationMinutes: number;
+  } | null;
+}
 
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [currentQuestion] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [codeServerUrl, setCodeServerUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const question = mockQuestions[currentQuestion];
+  const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(null);
 
-  // Simple timer
-  useState(() => {
+  useEffect(() => {
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(interval);
-  });
+  }, []);
 
   // Fetch session data on mount to get codeServerUrl
   useEffect(() => {
@@ -64,11 +45,13 @@ export default function SessionPage() {
           return;
         }
 
-        const data = await res.json();
+        const data = (await res.json()) as SessionDetail;
         if (data.status === 'stopped' || data.status === 'error' || data.status === 'timed_out' || data.status === 'abandoned') {
           navigate('/candidate', { replace: true });
           return;
         }
+
+        setSessionDetail(data);
 
         if (data.codeServerUrl) {
           setCodeServerUrl(data.codeServerUrl);
@@ -80,8 +63,9 @@ export default function SessionPage() {
               const pollRes = await apiFetch(`/api/sessions/${id}`);
               if (cancelled) return;
               if (!pollRes.ok) return;
-              const pollData = await pollRes.json();
+              const pollData = (await pollRes.json()) as SessionDetail;
               if (pollData.codeServerUrl) {
+                setSessionDetail(pollData);
                 setCodeServerUrl(pollData.codeServerUrl);
                 setLoading(false);
                 clearInterval(poll);
@@ -131,9 +115,7 @@ export default function SessionPage() {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <span className="font-display text-xs text-muted-foreground">Q</span>
-            <span className="font-display text-sm text-foreground">
-              {currentQuestion + 1}/{mockQuestions.length}
-            </span>
+            <span className="font-display text-sm text-foreground">Live</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -149,15 +131,24 @@ export default function SessionPage() {
             <div className="max-w-xl">
               <div className="flex items-center gap-3 mb-6">
                 <span className="px-3 py-1 rounded-full glass text-xs font-display text-primary">
-                  Question {currentQuestion + 1}
+                  Assessment Brief
                 </span>
                 <span className="px-3 py-1 rounded-full glass text-xs font-display text-muted-foreground">
-                  Hard
+                  {sessionDetail?.assessment?.durationMinutes ?? '--'} min
                 </span>
               </div>
-              <h2 className="font-display text-2xl text-foreground mb-6">{question.title}</h2>
+              <h2 className="font-display text-2xl text-foreground mb-3">
+                {sessionDetail?.assessment?.title ?? 'Technical Assessment'}
+              </h2>
+              {sessionDetail?.assessment?.summary && (
+                <p className="mb-6 text-sm leading-7 text-muted-foreground">
+                  {sessionDetail.assessment.summary}
+                </p>
+              )}
               <div className="prose prose-invert prose-sm max-w-none font-sans">
-                {question.description.split('\n').map((line, i) => {
+                {(sessionDetail?.assessment?.instructionsMd ?? 'Assessment instructions are loading.')
+                  .split('\n')
+                  .map((line, i) => {
                   if (line.startsWith('## '))
                     return (
                       <h2 key={i} className="font-display text-lg text-foreground mt-6 mb-3">
