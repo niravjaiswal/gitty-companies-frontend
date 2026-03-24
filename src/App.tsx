@@ -12,6 +12,8 @@ import SessionPage from "./pages/SessionPage";
 import Dashboard from "./pages/Dashboard";
 import CreateAssessment from "./pages/CreateAssessment";
 import SendAssessment from "./pages/SendAssessment";
+import AssessmentResults from "./pages/AssessmentResults";
+import CandidateResult from "./pages/CandidateResult";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +70,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <SendAssessment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/assessments/:assessmentId/results"
+              element={
+                <ProtectedRoute>
+                  <AssessmentResults />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/results/:sessionId"
+              element={
+                <ProtectedRoute>
+                  <CandidateResult />
                 </ProtectedRoute>
               }
             />

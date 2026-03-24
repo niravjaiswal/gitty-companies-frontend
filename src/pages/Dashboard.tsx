@@ -5,7 +5,7 @@ import LiquidButton from '@/components/LiquidButton';
 import { Input } from '@/components/ui/input';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowRight, Building2, Plus, Search, Sparkles } from 'lucide-react';
+import { ArrowRight, BarChart3, Building2, Plus, Search, Sparkles } from 'lucide-react';
 
 interface CompanyInfo {
   company: {
@@ -301,13 +301,22 @@ export default function Dashboard() {
                     <span className="text-sm text-white/42">
                       {new Date(assessment.createdAt).toLocaleDateString()}
                     </span>
-                    <button
-                      onClick={() => navigate(`/dashboard/send/${assessment.id}`)}
-                      className="inline-flex items-center gap-2 text-sm text-primary transition-colors hover:text-white"
-                    >
-                      Manage
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => navigate(`/dashboard/assessments/${assessment.id}/results`)}
+                        className="inline-flex items-center gap-2 text-sm text-white/55 transition-colors hover:text-white"
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                        Results
+                      </button>
+                      <button
+                        onClick={() => navigate(`/dashboard/send/${assessment.id}`)}
+                        className="inline-flex items-center gap-2 text-sm text-primary transition-colors hover:text-white"
+                      >
+                        Manage
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </article>
               ))}

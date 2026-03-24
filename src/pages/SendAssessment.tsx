@@ -5,7 +5,7 @@ import LiquidButton from '@/components/LiquidButton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiFetch } from '@/lib/api';
-import { ArrowLeft, Copy, MailPlus, SendHorizonal } from 'lucide-react';
+import { ArrowLeft, BarChart3, Copy, MailPlus, SendHorizonal } from 'lucide-react';
 
 interface AssessmentDetail {
   id: string;
@@ -265,6 +265,13 @@ export default function SendAssessment() {
                   <p className="text-xs uppercase tracking-[0.35em] text-white/45">Assignments</p>
                   <h2 className="mt-3 text-3xl">{assignments.length} candidates tracked</h2>
                 </div>
+                <button
+                  onClick={() => navigate(`/dashboard/assessments/${id}/results`)}
+                  className="inline-flex items-center gap-2 text-sm text-white/55 transition-colors hover:text-white"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  View all results
+                </button>
               </div>
 
               <div className="mt-6 space-y-3">
