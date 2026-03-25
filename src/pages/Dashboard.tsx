@@ -198,10 +198,14 @@ export default function Dashboard() {
                   </div>
                   <LiquidButton
                     onClick={() => navigate('/dashboard/create')}
-                    className="h-12 rounded-full px-6"
+                    className="h-14 gap-4 rounded-full px-4 normal-case tracking-[0.14em] md:self-center"
                   >
-                    <Plus className="mr-2 h-4 w-4" />
-                    New assessment
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/18 ring-1 ring-white/12">
+                      <Plus className="h-4 w-4" />
+                    </span>
+                    <span className="pr-2 text-[13px] font-semibold uppercase">
+                      New assessment
+                    </span>
                   </LiquidButton>
                 </div>
               </div>

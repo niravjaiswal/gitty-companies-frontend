@@ -1,6 +1,16 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import IDELayout from '@/components/IDE/IDELayout';
 import { apiFetch } from '@/lib/api';
 
@@ -24,6 +34,9 @@ export default function SessionPage() {
   const [codeServerUrl, setCodeServerUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -99,8 +112,49 @@ export default function SessionPage() {
     return `${m}:${s}`;
   }, []);
 
+  const handleSubmit = useCallback(async () => {
+    if (!id || submitting) return;
+    setShowConfirm(false);
+    setSubmitting(true);
+    try {
+      const res = await apiFetch(`/api/sessions/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        console.error('Submit failed:', res.status, await res.text().catch(() => ''));
+      }
+    } catch (err) {
+      console.error('Submit error:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [id, submitting]);
+
   if (!id) {
     return <Navigate to="/candidate" replace />;
+  }
+
+  if (submitted) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-6 text-center max-w-md px-6">
+          <div className="w-16 h-16 rounded-full bg-primary/15 flex items-center justify-center">
+            <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="font-display text-2xl text-foreground mb-2">Assessment Submitted</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Your work has been recorded successfully. You can safely close this window or return to the dashboard.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/candidate')} size="lg">
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -121,6 +175,23 @@ export default function SessionPage() {
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span className="font-display text-sm text-foreground">{formatTime(elapsed)}</span>
           </div>
+          <Button size="sm" disabled={submitting} onClick={() => setShowConfirm(true)}>
+            {submitting ? 'Submitting...' : 'Submit Assessment'}
+          </Button>
+          <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Submit your assessment?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will end your session and submit all your work for review. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <Button onClick={handleSubmit}>Submit</Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
