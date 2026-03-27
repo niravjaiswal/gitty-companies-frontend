@@ -9,32 +9,64 @@ const GlassNav = ({ variant = "landing" }: GlassNavProps) => {
   const location = useLocation();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="font-display text-lg tracking-wider text-foreground hover:text-primary liquid-transition">
-          TECHASSESS
+    <nav
+      className={cn(
+        "fixed left-0 right-0 z-50",
+        variant === "landing" ? "top-6 px-6" : "top-0 glass border-b border-border/50"
+      )}
+    >
+      <div
+        className={cn(
+          "max-w-7xl mx-auto flex items-center justify-between",
+          variant === "landing"
+            ? "rounded-[20px] border border-white/10 bg-black/70 px-6 py-4 shadow-[0_30px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+            : "h-16 px-6"
+        )}
+      >
+        <Link to="/" className="flex items-center gap-3 text-foreground liquid-transition hover:text-white">
+          <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl">
+            <img src="/gitty.png" alt="Gitty logo" className="h-full w-full object-contain" />
+          </span>
+          <span className={cn("font-display tracking-[0.04em]", variant === "landing" ? "text-2xl" : "text-lg")}>
+            gitty
+          </span>
         </Link>
 
         <div className="flex items-center gap-6">
           {variant === "landing" && (
             <>
-              <Link
-                to="/verify"
+              <a
+                href="#workflow"
                 className={cn(
                   "text-sm text-muted-foreground hover:text-foreground liquid-transition",
-                  location.pathname === "/verify" && "text-primary"
+                  location.hash === "#workflow" && "text-primary"
                 )}
               >
-                Applicants
-              </Link>
-              <Link
-                to="/dashboard"
+                How it works
+              </a>
+              <a
+                href="#signal"
                 className={cn(
                   "text-sm text-muted-foreground hover:text-foreground liquid-transition",
-                  location.pathname.startsWith("/dashboard") && "text-primary"
+                  location.hash === "#signal" && "text-primary"
                 )}
               >
-                Companies
+                Signal
+              </a>
+              <a
+                href="#trust"
+                className={cn(
+                  "text-sm text-muted-foreground hover:text-foreground liquid-transition",
+                  location.hash === "#trust" && "text-primary"
+                )}
+              >
+                Trust
+              </a>
+              <Link
+                to="/login"
+                className="rounded-full border border-white/20 px-4 py-2 text-sm text-white transition hover:-translate-y-0.5 hover:border-white/40"
+              >
+                Sign In
               </Link>
             </>
           )}

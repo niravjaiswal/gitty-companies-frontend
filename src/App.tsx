@@ -14,6 +14,7 @@ import CreateAssessment from "./pages/CreateAssessment";
 import SendAssessment from "./pages/SendAssessment";
 import AssessmentResults from "./pages/AssessmentResults";
 import CandidateResult from "./pages/CandidateResult";
+import AssessmentEditor from "./pages/AssessmentEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <SendAssessment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/assessments/:id/editor"
+              element={
+                <ProtectedRoute>
+                  <AssessmentEditor />
                 </ProtectedRoute>
               }
             />

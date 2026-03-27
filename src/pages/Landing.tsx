@@ -1,45 +1,48 @@
 import { useNavigate } from "react-router-dom";
 import GlassNav from "@/components/GlassNav";
 import LiquidButton from "@/components/LiquidButton";
-import LiquidBlobs from "@/components/LiquidBlobs";
 
 const Landing = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      <LiquidBlobs />
+    <div className="relative min-h-screen overflow-hidden bg-[#050505] text-white">
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="gitty-grid-plane gitty-grid-plane-a" />
+        <div className="gitty-grid-plane gitty-grid-plane-b" />
+        <div className="gitty-grid-plane gitty-grid-plane-c" />
+      </div>
       <GlassNav variant="landing" />
 
-      {/* Hero */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6">
-        <div className="text-center max-w-3xl mx-auto">
-          <p className="font-display text-sm text-primary tracking-[0.3em] uppercase mb-6 animate-fade-in">
-            Hiring, Reimagined
-          </p>
-          <h1 className="text-5xl md:text-7xl font-display leading-[1.1] mb-6 animate-fade-in text-foreground">
-            The assessment
-            <br />
-            platform that
-            <br />
-            <span className="text-gradient-orange">feels alive</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-lg mx-auto mb-12 animate-fade-in font-sans">
-            Create immersive technical assessments. Evaluate candidates in real-time.
-            Built for teams who refuse to settle for boring.
-          </p>
+      <main className="relative z-10">
+        <section className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-6 pb-20 pt-32">
+          <div className="max-w-3xl text-center">
+            <p className="mb-6 font-sans text-sm uppercase tracking-[0.3em] text-white/50">
+              Hiring, Reimagined
+            </p>
+            <h1 className="mb-6 font-display text-5xl leading-[1.04] text-white sm:text-6xl md:text-7xl">
+              The assessment
+              <br />
+              platform that
+              <br />
+              <span className="italic text-white/92">feels alive</span>
+            </h1>
+            <p className="mx-auto mb-12 max-w-lg text-lg font-sans text-white/62">
+              Create immersive technical assessments. Evaluate candidates in real-time.
+              Built for teams who refuse to settle for boring.
+            </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
-            <LiquidButton size="lg" onClick={() => navigate("/login")}>
-              I'm an Applicant
-            </LiquidButton>
-            <LiquidButton size="lg" variant="outline" onClick={() => navigate("/dashboard")}>
-              I'm Hiring
-            </LiquidButton>
+            <div className="flex flex-col justify-center gap-4 sm:flex-row">
+              <LiquidButton size="lg" onClick={() => navigate("/login")}>
+                I'm an Applicant
+              </LiquidButton>
+              <LiquidButton size="lg" variant="outline" onClick={() => navigate("/dashboard")}>
+                I'm Hiring
+              </LiquidButton>
+            </div>
           </div>
-        </div>
-
-      </div>
+        </section>
+      </main>
     </div>
   );
 };

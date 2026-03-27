@@ -24,6 +24,9 @@ interface SessionDetail {
     summary: string;
     instructionsMd: string;
     durationMinutes: number;
+    workspaceEntryFile: string | null;
+    workspaceGeneratedAt: string | null;
+    workspaceFileCount: number;
   } | null;
 }
 
@@ -214,6 +217,14 @@ export default function SessionPage() {
               {sessionDetail?.assessment?.summary && (
                 <p className="mb-6 text-sm leading-7 text-muted-foreground">
                   {sessionDetail.assessment.summary}
+                </p>
+              )}
+              {sessionDetail?.assessment && sessionDetail.assessment.workspaceFileCount > 0 && (
+                <p className="mb-6 text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  {sessionDetail.assessment.workspaceFileCount} starter files loaded
+                  {sessionDetail.assessment.workspaceEntryFile
+                    ? `, opening ${sessionDetail.assessment.workspaceEntryFile}`
+                    : ''}
                 </p>
               )}
               <div className="prose prose-invert prose-sm max-w-none font-sans">

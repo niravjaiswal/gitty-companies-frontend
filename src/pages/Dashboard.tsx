@@ -30,6 +30,7 @@ interface AssessmentSummary {
   assignmentCount: number;
   completedCount: number;
   inProgressCount: number;
+  workspaceFileCount: number;
 }
 
 export default function Dashboard() {
@@ -177,42 +178,51 @@ export default function Dashboard() {
                 <span className="text-xs uppercase tracking-[0.35em]">V1 Scope</span>
               </div>
               <div className="mt-8 space-y-5 text-sm text-white/68">
-                <p>Manual authoring is live in this implementation.</p>
-                <p>GitHub import, PRD ingestion, and AI generation remain future work.</p>
+                <p>Assessments are now generated from a single recruiter prompt.</p>
+                <p>Saving an assessment generates a starter repo and test files for the VS Code workspace.</p>
                 <p>Candidates claim assignments through email-match on sign-in instead of email delivery.</p>
               </div>
             </aside>
           </div>
         ) : (
           <div className="mx-auto max-w-7xl">
-            <section className="grid gap-6 lg:grid-cols-[1.35fr_0.75fr]">
-              <div className="editorial-panel rounded-[2rem] p-8 md:p-10">
-                <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.45em] text-primary/80">
-                      {companyInfo.company.name}
-                    </p>
-                    <h1 className="mt-4 max-w-2xl text-4xl leading-tight md:text-6xl">
-                      Assessments with real ownership, real assignment state, and no mock data.
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="editorial-panel rounded-[1.35rem] p-6">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-primary/80">
+                        {companyInfo.company.name}
+                      </p>
+                      <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-white/55">
+                        {companyInfo.membership.role}
+                      </span>
+                    </div>
+                    <h1 className="mt-3 text-2xl leading-tight md:text-3xl">
+                      Assessment operations
                     </h1>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
+                      Create, publish, assign, and review generated coding assessments.
+                    </p>
                   </div>
+
                   <LiquidButton
                     onClick={() => navigate('/dashboard/create')}
-                    className="h-14 gap-4 rounded-full px-4 normal-case tracking-[0.14em] md:self-center"
+                    className="h-11 gap-3 rounded-xl px-4 normal-case tracking-[0.1em]"
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/18 ring-1 ring-white/12">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-black/18 ring-1 ring-white/12">
                       <Plus className="h-4 w-4" />
                     </span>
-                    <span className="pr-2 text-[13px] font-semibold uppercase">
+                    <span className="text-[12px] font-semibold uppercase">
                       New assessment
                     </span>
                   </LiquidButton>
                 </div>
               </div>
 
-              <div className="editorial-panel rounded-[2rem] p-8">
+              <div className="editorial-panel rounded-[1.35rem] p-5">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs uppercase tracking-[0.35em] text-white/45">Access</p>
+                  <p className="text-[11px] uppercase tracking-[0.32em] text-white/45">Access</p>
                   <button
                     onClick={signOut}
                     className="text-sm text-white/55 transition-colors hover:text-white"
@@ -220,14 +230,14 @@ export default function Dashboard() {
                     Sign out
                   </button>
                 </div>
-                <div className="mt-6 space-y-4">
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/4 p-4">
-                    <p className="text-xs uppercase tracking-[0.3em] text-white/45">Role</p>
-                    <p className="mt-2 text-2xl capitalize">{companyInfo.membership.role}</p>
+                <div className="mt-4 grid gap-3">
+                  <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] p-4">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/42">Role</p>
+                    <p className="mt-2 text-xl capitalize">{companyInfo.membership.role}</p>
                   </div>
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/4 p-4">
-                    <p className="text-xs uppercase tracking-[0.3em] text-white/45">Created</p>
-                    <p className="mt-2 text-lg">
+                  <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] p-4">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/42">Created</p>
+                    <p className="mt-2 text-base">
                       {new Date(companyInfo.company.createdAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -235,77 +245,81 @@ export default function Dashboard() {
               </div>
             </section>
 
-            <section className="mt-6 grid gap-4 md:grid-cols-3">
+            <section className="mt-4 grid gap-4 md:grid-cols-3">
               {[
                 ['Published', stats.published],
                 ['In progress', stats.activeCandidates],
                 ['Completed', stats.completions],
               ].map(([label, value]) => (
-                <div key={label} className="editorial-panel rounded-[1.75rem] p-6">
-                  <p className="text-xs uppercase tracking-[0.35em] text-white/45">{label}</p>
-                  <p className="mt-4 text-4xl">{value}</p>
+                <div key={label} className="editorial-panel rounded-[1.15rem] p-5">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-white/45">{label}</p>
+                  <p className="mt-3 text-3xl">{value}</p>
                 </div>
               ))}
             </section>
 
-            <section className="mt-6 editorial-panel rounded-[2rem] p-6">
+            <section className="mt-4 editorial-panel rounded-[1.15rem] p-4">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by title or summary"
-                  className="h-12 rounded-full border-white/10 bg-white/5 pl-11"
+                  className="h-11 rounded-lg border-white/10 bg-white/5 pl-11"
                 />
               </div>
             </section>
 
             {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
 
-            <section className="mt-6 grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+            <section className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
               {filtered.map((assessment, index) => (
                 <article
                   key={assessment.id}
-                  className="editorial-panel group rounded-[2rem] p-6 transition-transform duration-500 hover:-translate-y-1"
+                  className="editorial-panel group rounded-[1.15rem] p-5 transition-transform duration-300 hover:-translate-y-1"
                   style={{ animationDelay: `${index * 80}ms` }}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-white/55">
+                    <span className="rounded-md border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-white/55">
                       {assessment.status}
                     </span>
                     <span className="text-sm text-white/45">{assessment.durationMinutes} min</span>
                   </div>
-                  <h2 className="mt-6 text-3xl leading-tight">{assessment.title}</h2>
-                  <p className="mt-4 text-sm leading-6 text-white/60">
+                  <h2 className="mt-4 text-2xl leading-tight">{assessment.title}</h2>
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/60">
                     {assessment.summary || assessment.instructionsMd}
                   </p>
 
-                  <div className="mt-8 grid grid-cols-3 gap-3 text-center text-sm">
-                    <div className="rounded-[1.25rem] border border-white/8 bg-white/4 p-3">
+                  <div className="mt-5 grid grid-cols-3 gap-2.5 text-center text-sm">
+                    <div className="rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3">
                       <div className="text-xl">{assessment.assignmentCount}</div>
-                      <div className="mt-1 text-[11px] uppercase tracking-[0.25em] text-white/40">
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
                         Sent
                       </div>
                     </div>
-                    <div className="rounded-[1.25rem] border border-white/8 bg-white/4 p-3">
+                    <div className="rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3">
                       <div className="text-xl">{assessment.inProgressCount}</div>
-                      <div className="mt-1 text-[11px] uppercase tracking-[0.25em] text-white/40">
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
                         Live
                       </div>
                     </div>
-                    <div className="rounded-[1.25rem] border border-white/8 bg-white/4 p-3">
+                    <div className="rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3">
                       <div className="text-xl">{assessment.completedCount}</div>
-                      <div className="mt-1 text-[11px] uppercase tracking-[0.25em] text-white/40">
+                      <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
                         Done
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-8 flex items-center justify-between border-t border-white/8 pt-5">
-                    <span className="text-sm text-white/42">
+                  <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-white/38">
+                    {assessment.workspaceFileCount} workspace files generated
+                  </p>
+
+                  <div className="mt-5 flex items-center justify-between border-t border-white/8 pt-4">
+                    <span className="text-xs text-white/42">
                       {new Date(assessment.createdAt).toLocaleDateString()}
                     </span>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={() => navigate(`/dashboard/assessments/${assessment.id}/results`)}
                         className="inline-flex items-center gap-2 text-sm text-white/55 transition-colors hover:text-white"
@@ -327,9 +341,9 @@ export default function Dashboard() {
             </section>
 
             {filtered.length === 0 && (
-              <section className="mt-8 editorial-panel rounded-[2rem] p-10 text-center">
+              <section className="mt-6 editorial-panel rounded-[1.15rem] p-8 text-center">
                 <Building2 className="mx-auto h-8 w-8 text-white/35" />
-                <h2 className="mt-5 text-3xl">No assessments match this view.</h2>
+                <h2 className="mt-4 text-2xl">No assessments match this view.</h2>
                 <p className="mx-auto mt-3 max-w-md text-sm text-white/58">
                   Create a new assessment or clear the current search to see the full slate.
                 </p>
