@@ -70,6 +70,19 @@ const GlassNav = ({ variant = "landing" }: GlassNavProps) => {
               </Link>
             </>
           )}
+          {variant === "applicant" && (
+            <>
+              <Link
+                to="/candidate"
+                className={cn(
+                  "text-sm text-muted-foreground hover:text-foreground liquid-transition",
+                  location.pathname === "/candidate" && "text-primary"
+                )}
+              >
+                My Assessments
+              </Link>
+            </>
+          )}
           {variant === "company" && (
             <>
               <Link
