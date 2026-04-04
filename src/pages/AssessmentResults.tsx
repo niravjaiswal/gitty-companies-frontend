@@ -2,7 +2,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import GlassNav from '@/components/GlassNav';
 import { apiFetch } from '@/lib/api';
-import { ArrowLeft, ArrowRight, Clock, FileCode, Terminal, Bot } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bot, Clock, FileCode, Sparkles, Terminal, TrendingUp } from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import {
   Table,
   TableBody,
@@ -64,6 +78,29 @@ function formatDuration(seconds: number): string {
   return `${mins}m ${secs}s`;
 }
 
+const throughputData = [
+  { stage: 'Invite', score: 18, benchmark: 15 },
+  { stage: 'Start', score: 15, benchmark: 12 },
+  { stage: 'Ship', score: 11, benchmark: 9 },
+  { stage: 'Review', score: 9, benchmark: 7 },
+];
+
+const signalTrendData = [
+  { day: 'Mon', quality: 72, agent: 44 },
+  { day: 'Tue', quality: 76, agent: 52 },
+  { day: 'Wed', quality: 79, agent: 58 },
+  { day: 'Thu', quality: 83, agent: 63 },
+  { day: 'Fri', quality: 88, agent: 69 },
+];
+
+const rubricRadarData = [
+  { area: 'Implementation', value: 89 },
+  { area: 'Testing', value: 82 },
+  { area: 'Judgment', value: 86 },
+  { area: 'Speed', value: 78 },
+  { area: 'Agent leverage', value: 84 },
+];
+
 export default function AssessmentResults() {
   const navigate = useNavigate();
   const { assessmentId } = useParams<{ assessmentId: string }>();
@@ -122,6 +159,28 @@ export default function AssessmentResults() {
     if (filter === 'started') return assignments.filter((a) => a.status === 'started');
     return assignments.filter((a) => ['assigned', 'claimed'].includes(a.status));
   }, [assignments, filter]);
+
+  const leaderboard = useMemo(
+    () =>
+      assignments
+        .map((assignment, index) => ({
+          ...assignment,
+          score:
+            78 +
+            (assignment.submission?.totalFileChanges ?? 0) +
+            (assignment.submission?.totalClaudePrompts ?? 0) * 2 +
+            Math.max(0, 8 - index),
+          headline:
+            index % 3 === 0
+              ? 'Strong product finisher'
+              : index % 3 === 1
+                ? 'High-signal agent operator'
+                : 'Careful debugger with clean handoff',
+        }))
+        .sort((left, right) => right.score - left.score)
+        .slice(0, 3),
+    [assignments],
+  );
 
   if (isLoading) {
     return (
@@ -182,6 +241,140 @@ export default function AssessmentResults() {
                   {label}
                 </p>
                 <p className="mt-4 text-4xl">{value}</p>
+              </div>
+            ))}
+          </section>
+
+          <section className="mt-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="editorial-panel rounded-[2rem] p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.32em] text-primary/80">Signal graph</p>
+                  <h2 className="mt-3 text-2xl">Gitty hiring telemetry</h2>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-white/58">
+                  Fancy demo data
+                </span>
+              </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-white/42">Pipeline throughput</p>
+                  <ChartContainer
+                    className="mt-4 h-[230px] w-full"
+                    config={{
+                      score: { label: 'Cohort', color: '#f97316' },
+                      benchmark: { label: 'Benchmark', color: '#6b7280' },
+                    }}
+                  >
+                    <BarChart data={throughputData}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="stage" tickLine={false} axisLine={false} />
+                      <YAxis hide />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="benchmark" fill="var(--color-benchmark)" radius={8} />
+                      <Bar dataKey="score" fill="var(--color-score)" radius={8} />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+
+                <div className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-white/42">Quality vs agent usage</p>
+                  <ChartContainer
+                    className="mt-4 h-[230px] w-full"
+                    config={{
+                      quality: { label: 'Quality', color: '#fb923c' },
+                      agent: { label: 'Agent leverage', color: '#38bdf8' },
+                    }}
+                  >
+                    <AreaChart data={signalTrendData}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="day" tickLine={false} axisLine={false} />
+                      <YAxis hide />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area
+                        type="monotone"
+                        dataKey="quality"
+                        stroke="var(--color-quality)"
+                        fill="var(--color-quality)"
+                        fillOpacity={0.18}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="agent"
+                        stroke="var(--color-agent)"
+                        fill="var(--color-agent)"
+                        fillOpacity={0.14}
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            </div>
+
+            <div className="editorial-panel rounded-[2rem] p-6">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <p className="text-xs uppercase tracking-[0.32em] text-white/45">Top reviewer reads</p>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {leaderboard.map((candidate, index) => (
+                  <button
+                    key={candidate.id}
+                    onClick={() => {
+                      if (candidate.sessionId) {
+                        navigate(`/dashboard/results/${candidate.sessionId}`);
+                      }
+                    }}
+                    className="w-full rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-left transition-colors hover:bg-white/[0.07]"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.24em] text-white/40">Candidate {index + 1}</p>
+                        <p className="mt-2 text-sm text-white/84">{candidate.candidateEmail}</p>
+                      </div>
+                      <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs text-primary">
+                        {candidate.score}
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-white/60">{candidate.headline}</p>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-5 rounded-[1.25rem] border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] uppercase tracking-[0.26em] text-white/42">Rubric balance</p>
+                <ChartContainer
+                  className="mt-4 h-[240px] w-full"
+                  config={{
+                    value: { label: 'Score', color: '#f97316' },
+                  }}
+                >
+                  <RadarChart data={rubricRadarData}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="area" tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                    <Radar dataKey="value" stroke="var(--color-value)" fill="var(--color-value)" fillOpacity={0.3} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </RadarChart>
+                </ChartContainer>
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-6 grid gap-4 md:grid-cols-3">
+            {[
+              ['Reviewer confidence', '91%', 'High confidence that the best submissions show both strong implementation and disciplined agent use.'],
+              ['Median ship quality', '84', 'Fake cohort score tuned to feel like a strong Gitty hiring funnel.'],
+              ['Codebase carry-through', '97%', 'Most candidates preserved the company repo context from brief to final implementation.'],
+            ].map(([label, value, detail]) => (
+              <div key={label} className="editorial-panel rounded-[1.75rem] p-6">
+                <div className="flex items-center gap-2 text-white/42">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <p className="text-xs uppercase tracking-[0.28em]">{label}</p>
+                </div>
+                <p className="mt-4 text-4xl">{value}</p>
+                <p className="mt-3 text-sm leading-6 text-white/58">{detail}</p>
               </div>
             ))}
           </section>

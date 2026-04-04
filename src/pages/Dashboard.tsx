@@ -5,7 +5,19 @@ import LiquidButton from '@/components/LiquidButton';
 import { Input } from '@/components/ui/input';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowRight, BarChart3, Building2, Plus, Search, Sparkles } from 'lucide-react';
+import {
+  ArrowRight,
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  Clock,
+  Plus,
+  Search,
+  Sparkles,
+  Users,
+  Zap,
+} from 'lucide-react';
+import Tilt3D from '@/components/Tilt3D';
 
 interface CompanyInfo {
   company: {
@@ -32,6 +44,12 @@ interface AssessmentSummary {
   inProgressCount: number;
   workspaceFileCount: number;
 }
+
+const STATUS_STYLES: Record<AssessmentSummary['status'], string> = {
+  published: 'badge-published',
+  draft: 'badge-draft',
+  archived: 'badge-archived',
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -131,7 +149,10 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-white/40 uppercase tracking-[0.2em]">Loading workspace</p>
+        </div>
       </div>
     );
   }
@@ -144,6 +165,7 @@ export default function Dashboard() {
           <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.3fr_0.8fr]">
             <section className="editorial-panel relative overflow-hidden rounded-[2rem] p-8 md:p-12">
               <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-primary/10 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
               <p className="mb-4 text-xs uppercase tracking-[0.45em] text-primary/80">
                 Company Workspace
               </p>
@@ -159,7 +181,7 @@ export default function Dashboard() {
                   value={workspaceName}
                   onChange={(event) => setWorkspaceName(event.target.value)}
                   placeholder="Acme Hiring Lab"
-                  className="h-14 rounded-2xl border-white/10 bg-white/5 text-base"
+                  className="h-14 rounded-2xl border-white/10 bg-white/5 text-base focus:border-primary/40 focus:ring-primary/20"
                 />
                 <LiquidButton
                   onClick={handleBootstrap}
@@ -186,6 +208,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="mx-auto max-w-7xl">
+            {/* Header row */}
             <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="editorial-panel rounded-[1.35rem] p-6">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -245,19 +268,46 @@ export default function Dashboard() {
               </div>
             </section>
 
+            {/* Stats row */}
             <section className="mt-4 grid gap-4 md:grid-cols-3">
               {[
-                ['Published', stats.published],
-                ['In progress', stats.activeCandidates],
-                ['Completed', stats.completions],
-              ].map(([label, value]) => (
-                <div key={label} className="editorial-panel rounded-[1.15rem] p-5">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-white/45">{label}</p>
-                  <p className="mt-3 text-3xl">{value}</p>
-                </div>
+                {
+                  label: 'Published',
+                  value: stats.published,
+                  icon: Zap,
+                  accent: 'text-primary',
+                  bg: 'bg-primary/10',
+                },
+                {
+                  label: 'In progress',
+                  value: stats.activeCandidates,
+                  icon: Users,
+                  accent: 'text-amber-400',
+                  bg: 'bg-amber-400/10',
+                },
+                {
+                  label: 'Completed',
+                  value: stats.completions,
+                  icon: CheckCircle2,
+                  accent: 'text-emerald-400',
+                  bg: 'bg-emerald-400/10',
+                },
+              ].map(({ label, value, icon: Icon, accent, bg }) => (
+                <Tilt3D key={label} intensity={7} lift={6}>
+                  <div className="editorial-panel stat-card rounded-[1.15rem] p-5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] uppercase tracking-[0.28em] text-white/45">{label}</p>
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${bg}`}>
+                        <Icon className={`h-4 w-4 ${accent}`} />
+                      </div>
+                    </div>
+                    <p className={`stat-number mt-3 text-4xl font-display ${accent}`}>{value}</p>
+                  </div>
+                </Tilt3D>
               ))}
             </section>
 
+            {/* Search */}
             <section className="mt-4 editorial-panel rounded-[1.15rem] p-4">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
@@ -265,25 +315,31 @@ export default function Dashboard() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by title or summary"
-                  className="h-11 rounded-lg border-white/10 bg-white/5 pl-11"
+                  className="h-11 rounded-lg border-white/10 bg-white/5 pl-11 focus:border-primary/30"
                 />
               </div>
             </section>
 
             {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
 
+            {/* Assessment cards */}
             <section className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
               {filtered.map((assessment, index) => (
+                <Tilt3D key={assessment.id} intensity={6} lift={5}>
                 <article
-                  key={assessment.id}
-                  className="editorial-panel group rounded-[1.15rem] p-5 transition-transform duration-300 hover:-translate-y-1"
+                  className="assessment-card-accent editorial-panel group rounded-[1.15rem] p-5"
                   style={{ animationDelay: `${index * 80}ms` }}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="rounded-md border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] text-white/55">
+                    <span
+                      className={`rounded-md px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${STATUS_STYLES[assessment.status]}`}
+                    >
                       {assessment.status}
                     </span>
-                    <span className="text-sm text-white/45">{assessment.durationMinutes} min</span>
+                    <span className="flex items-center gap-1.5 text-sm text-white/45">
+                      <Clock className="h-3.5 w-3.5" />
+                      {assessment.durationMinutes} min
+                    </span>
                   </div>
                   <h2 className="mt-4 text-2xl leading-tight">{assessment.title}</h2>
                   <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/60">
@@ -291,24 +347,21 @@ export default function Dashboard() {
                   </p>
 
                   <div className="mt-5 grid grid-cols-3 gap-2.5 text-center text-sm">
-                    <div className="rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3">
-                      <div className="text-xl">{assessment.assignmentCount}</div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-                        Sent
+                    {[
+                      { label: 'Sent', value: assessment.assignmentCount },
+                      { label: 'Live', value: assessment.inProgressCount },
+                      { label: 'Done', value: assessment.completedCount },
+                    ].map(({ label, value }) => (
+                      <div
+                        key={label}
+                        className="rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3"
+                      >
+                        <div className="text-xl font-display">{value}</div>
+                        <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
+                          {label}
+                        </div>
                       </div>
-                    </div>
-                    <div className="rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3">
-                      <div className="text-xl">{assessment.inProgressCount}</div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-                        Live
-                      </div>
-                    </div>
-                    <div className="rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3">
-                      <div className="text-xl">{assessment.completedCount}</div>
-                      <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-                        Done
-                      </div>
-                    </div>
+                    ))}
                   </div>
 
                   <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-white/38">
@@ -332,21 +385,30 @@ export default function Dashboard() {
                         className="inline-flex items-center gap-2 text-sm text-primary transition-colors hover:text-white"
                       >
                         Manage
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                       </button>
                     </div>
                   </div>
                 </article>
+                </Tilt3D>
               ))}
             </section>
 
             {filtered.length === 0 && (
-              <section className="mt-6 editorial-panel rounded-[1.15rem] p-8 text-center">
-                <Building2 className="mx-auto h-8 w-8 text-white/35" />
-                <h2 className="mt-4 text-2xl">No assessments match this view.</h2>
+              <section className="mt-6 editorial-panel rounded-[1.15rem] p-12 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                  <Building2 className="h-7 w-7 text-white/30" />
+                </div>
+                <h2 className="mt-5 text-2xl">No assessments match this view.</h2>
                 <p className="mx-auto mt-3 max-w-md text-sm text-white/58">
                   Create a new assessment or clear the current search to see the full slate.
                 </p>
+                <div className="mt-8">
+                  <LiquidButton onClick={() => navigate('/dashboard/create')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create first assessment
+                  </LiquidButton>
+                </div>
               </section>
             )}
           </div>

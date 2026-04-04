@@ -30,6 +30,12 @@ interface SessionDetail {
   } | null;
 }
 
+const quickCommands = [
+  'npm install',
+  'npm run dev -- --host 0.0.0.0 --port 3000',
+  'npm run test',
+];
+
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -227,6 +233,27 @@ export default function SessionPage() {
                     : ''}
                 </p>
               )}
+              <div className="mb-6 grid gap-3">
+                <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-white/40">Workspace</p>
+                  <p className="mt-2 text-sm leading-6 text-white/70">
+                    The IDE opens directly in the assessment folder. Use the built-in terminal to run the project and tests before you submit.
+                  </p>
+                </div>
+                <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-white/40">Quick commands</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {quickCommands.map((command) => (
+                      <code
+                        key={command}
+                        className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] text-white/78"
+                      >
+                        {command}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <div className="prose prose-invert prose-sm max-w-none font-sans">
                 {(sessionDetail?.assessment?.instructionsMd ?? 'Assessment instructions are loading.')
                   .split('\n')

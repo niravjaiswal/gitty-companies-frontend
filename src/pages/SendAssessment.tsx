@@ -5,6 +5,7 @@ import LiquidButton from '@/components/LiquidButton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiFetch } from '@/lib/api';
+import { parseAssessmentBrief } from '@/lib/assessmentBrief';
 import { ArrowLeft, BarChart3, Copy, MailPlus, Pencil, SendHorizonal } from 'lucide-react';
 
 interface AssessmentDetail {
@@ -83,6 +84,10 @@ export default function SendAssessment() {
   const invitationLink = useMemo(() => {
     return `${window.location.origin}/candidate`;
   }, []);
+  const briefSections = useMemo(
+    () => parseAssessmentBrief(assessment?.instructionsMd ?? ''),
+    [assessment?.instructionsMd],
+  );
 
   async function handlePublish() {
     if (!id) return;
@@ -241,6 +246,39 @@ export default function SendAssessment() {
 
           <section className="mt-5 grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
             <div className="space-y-5">
+              {(briefSections.companyCodebase || briefSections.partA || briefSections.partB) ? (
+                <div className="editorial-panel rounded-[1.6rem] p-5">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.32em] text-white/45">
+                      Implementation scope
+                    </p>
+                    <p className="mt-2 text-sm text-white/55">
+                      Reviewer context for the repo, primary feature, and follow-up extension.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    {[
+                      ['Company codebase', briefSections.companyCodebase],
+                      ['Part A', briefSections.partA],
+                      ['Part B', briefSections.partB],
+                    ].map(([label, value]) =>
+                      value ? (
+                        <div
+                          key={label}
+                          className="rounded-[1.15rem] border border-white/10 bg-white/[0.04] px-4 py-4"
+                        >
+                          <p className="text-[10px] uppercase tracking-[0.24em] text-white/40">{label}</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white/74">
+                            {value}
+                          </p>
+                        </div>
+                      ) : null,
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="editorial-panel rounded-[1.6rem] p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>

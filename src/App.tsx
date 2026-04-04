@@ -15,6 +15,7 @@ import SendAssessment from "./pages/SendAssessment";
 import AssessmentResults from "./pages/AssessmentResults";
 import CandidateResult from "./pages/CandidateResult";
 import AssessmentEditor from "./pages/AssessmentEditor";
+import CandidatesPage from "./pages/CandidatesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             {/* Public routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/candidates" element={<CandidatesPage />} />
 
             {/* Candidate routes (protected) */}
             <Route

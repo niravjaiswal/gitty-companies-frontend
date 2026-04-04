@@ -1,13 +1,41 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GlassNav from '@/components/GlassNav';
 import LiquidButton from '@/components/LiquidButton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { apiFetch } from '@/lib/api';
-import { ArrowLeft, Clock3, SendHorizonal, Sparkles, WandSparkles } from 'lucide-react';
+import { buildAssessmentBrief } from '@/lib/assessmentBrief';
+import { ArrowLeft, Clock3, SendHorizonal, Sparkles, WandSparkles, Zap } from 'lucide-react';
 
-const DEFAULT_PROMPT = `Role: Senior Frontend Engineer
+function buildInstantPreset(role: string, githubUrl: string) {
+  const cleanRole = role.trim() || 'Senior Engineer';
+  const cleanUrl = githubUrl.trim() || 'https://github.com/gitty-ai/gitty';
+
+  return {
+    overview: `You are hiring a ${cleanRole} and want a realistic Gitty sprint built from a real company repo.
+
+The candidate should step into an existing React + TypeScript product surface, understand how the current flow works, and ship the missing feature in a way that feels production-ready rather than toy-assessment ready.`,
+    codebase: `Company repo: ${cleanUrl}
+Access: request repository access if the org repo is private before starting the sprint.
+Scenario: Gitty needs to ingest this codebase into the assessment flow and keep that repo context visible from setup to candidate execution to reviewer handoff.`,
+    partA: `Implement the company-codebase intake flow for ${cleanRole}.
+
+- Add a dedicated GitHub repository input in the assessment setup flow
+- Validate and normalize the repository URL before accepting it
+- Show a persistent repo summary card after the repo is connected
+- Carry the selected company codebase into the candidate brief and generated assessment metadata
+- Add or update tests so this behavior is verified`,
+    partB: `Implement the reviewer handoff for the same Gitty sprint.
+
+- Add a company-facing review panel that shows the linked codebase, expected implementation scope, and shipped result
+- Surface a concise acceptance checklist tied to Part A so reviewers can compare intent vs implementation fast
+- Keep the UX coherent with the existing product and leave the code in a review-friendly state`,
+  };
+}
+
+const LIVE_PROMPT = `Role: Senior Frontend Engineer
 
 Generate a realistic coding assessment as a runnable project the candidate can open in VS Code.
 
@@ -43,20 +71,70 @@ function deriveAssessmentSummary(prompt: string): string {
 
 export default function CreateAssessment() {
   const navigate = useNavigate();
-  const [generationPrompt, setGenerationPrompt] = useState(DEFAULT_PROMPT);
+  const initialPreset = buildInstantPreset('', '');
+  const [generationPrompt, setGenerationPrompt] = useState(initialPreset.overview);
   const [durationMinutes, setDurationMinutes] = useState('90');
+  const [demoMode, setDemoMode] = useState(true);
+  const [demoCandidateEmail, setDemoCandidateEmail] = useState('candidate@demo.dev');
+  const [companyCodebase, setCompanyCodebase] = useState(initialPreset.codebase);
+  const [partA, setPartA] = useState(initialPreset.partA);
+  const [partB, setPartB] = useState(initialPreset.partB);
+  const [intakeRepoUrl, setIntakeRepoUrl] = useState('');
+  const [intakeRole, setIntakeRole] = useState('');
+  const [builderReady, setBuilderReady] = useState(false);
+  const [isGeneratingPreset, setIsGeneratingPreset] = useState(false);
   const [submitting, setSubmitting] = useState<'draft' | 'published' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const derivedTitle = deriveAssessmentTitle(generationPrompt);
-  const derivedSummary = deriveAssessmentSummary(generationPrompt);
+  const compiledPrompt = useMemo(
+    () =>
+      demoMode
+        ? buildAssessmentBrief({
+            overview: generationPrompt,
+            companyCodebase,
+            partA,
+            partB,
+          })
+        : generationPrompt,
+    [companyCodebase, demoMode, generationPrompt, partA, partB],
+  );
+
+  const derivedTitle = deriveAssessmentTitle(compiledPrompt);
+  const derivedSummary = deriveAssessmentSummary(compiledPrompt);
+
+  useEffect(() => {
+    setGenerationPrompt((current) => {
+      if (demoMode && current === LIVE_PROMPT) {
+        return buildInstantPreset(intakeRole, intakeRepoUrl).overview;
+      }
+      if (!demoMode && current === buildInstantPreset(intakeRole, intakeRepoUrl).overview) {
+        return LIVE_PROMPT;
+      }
+      return current;
+    });
+  }, [demoMode, intakeRepoUrl, intakeRole]);
+
+  function startGeneratedBuilder() {
+    const preset = buildInstantPreset(intakeRole, intakeRepoUrl);
+    setIsGeneratingPreset(true);
+    setError(null);
+
+    window.setTimeout(() => {
+      setGenerationPrompt(preset.overview);
+      setCompanyCodebase(preset.codebase);
+      setPartA(preset.partA);
+      setPartB(preset.partB);
+      setBuilderReady(true);
+      setIsGeneratingPreset(false);
+    }, 1400);
+  }
 
   async function handleSubmit(status: 'draft' | 'published') {
     setSubmitting(status);
     setError(null);
 
     try {
-      const trimmedPrompt = generationPrompt.trim();
+      const trimmedPrompt = compiledPrompt.trim();
       const res = await apiFetch('/api/company/assessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,6 +150,8 @@ export default function CreateAssessment() {
           },
           status,
           generateWorkspace: true,
+          demoMode,
+          demoCandidateEmail: demoMode ? demoCandidateEmail.trim() : undefined,
         }),
       });
 
@@ -93,6 +173,95 @@ export default function CreateAssessment() {
       <GlassNav variant="company" />
       <div className="assessment-studio-shell editorial-grid min-h-screen px-6 pb-16 pt-24">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+          {!builderReady ? (
+            <section className="signal-panel rounded-[2rem] p-8 md:p-10">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="inline-flex items-center gap-2 text-sm text-white/55 transition-colors hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to dashboard
+              </button>
+
+              <div className="mt-8 grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.38em] text-primary/80">
+                    Gitty intake
+                  </p>
+                  <h1 className="mt-4 text-4xl leading-tight md:text-5xl">
+                    Start from the company repo, then generate the sprint.
+                  </h1>
+                  <p className="mt-4 max-w-xl text-sm leading-7 text-white/60">
+                    Answer two setup questions. Then Gitty will generate the assessment brief, repo context, and reviewer flow for you.
+                  </p>
+                </div>
+
+                <div className="rounded-[1.7rem] border border-white/10 bg-black/20 p-6">
+                  {isGeneratingPreset ? (
+                    <div className="flex min-h-[360px] flex-col items-center justify-center text-center">
+                      <div className="h-12 w-12 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      <p className="mt-6 text-[11px] uppercase tracking-[0.34em] text-primary/80">
+                        Generating
+                      </p>
+                      <h2 className="mt-3 text-2xl">Building your Gitty sprint</h2>
+                      <p className="mt-3 max-w-md text-sm leading-6 text-white/58">
+                        Pulling the repo context, shaping the role-specific task, and preparing the reviewer handoff.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      <div>
+                        <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                          1. Company GitHub codebase
+                        </label>
+                        <Textarea
+                          value={intakeRepoUrl}
+                          onChange={(event) => setIntakeRepoUrl(event.target.value)}
+                          className="min-h-[120px] rounded-[1.25rem] border-white/10 bg-white/5 text-sm leading-7"
+                          placeholder="Paste the GitHub repo URL and any access note if the repo is private."
+                        />
+                        <p className="mt-2 text-sm text-white/50">
+                          Example: `https://github.com/acme/platform-web` and mention if repo access must be granted before the candidate starts.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                          2. Role you are hiring for
+                        </label>
+                        <Input
+                          value={intakeRole}
+                          onChange={(event) => setIntakeRole(event.target.value)}
+                          className="h-12 rounded-[1.1rem] border-white/10 bg-white/5"
+                          placeholder="Senior Frontend Engineer"
+                        />
+                      </div>
+
+                      <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] p-4">
+                        <p className="text-[11px] uppercase tracking-[0.26em] text-white/42">What Gitty will generate</p>
+                        <div className="mt-3 space-y-2 text-sm leading-6 text-white/62">
+                          <p>Role-specific sprint brief</p>
+                          <p>Repo-aware candidate instructions</p>
+                          <p>Part A and Part B implementation scope</p>
+                          <p>Reviewer-ready handoff panels</p>
+                        </div>
+                      </div>
+
+                      <LiquidButton
+                        onClick={startGeneratedBuilder}
+                        disabled={!intakeRepoUrl.trim() || !intakeRole.trim()}
+                        className="h-12 rounded-full px-6"
+                      >
+                        <WandSparkles className="mr-2 h-4 w-4" />
+                        Generate assessment
+                      </LiquidButton>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          ) : (
+            <>
           <section className="signal-panel rounded-[1.75rem] px-6 py-5 md:px-7">
             <button
               onClick={() => navigate('/dashboard')}
@@ -131,6 +300,36 @@ export default function CreateAssessment() {
 
           <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="space-y-5 xl:sticky xl:top-24 xl:self-start">
+              <section className="signal-panel rounded-[1.6rem] p-5">
+                <div className="flex items-center gap-3 text-primary">
+                  <Zap className="h-4 w-4" />
+                  <p className="text-xs uppercase tracking-[0.32em]">Instant workspace</p>
+                </div>
+                <div className="mt-4 rounded-[1.2rem] border border-orange-400/15 bg-orange-400/8 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-white/86">Fast polished assessment path</p>
+                      <p className="mt-2 text-sm leading-6 text-white/58">
+                        Uses a prebuilt launch dashboard workspace, generates fast, and can auto-seed a candidate assignment for the video flow.
+                      </p>
+                    </div>
+                    <Switch checked={demoMode} onCheckedChange={setDemoMode} />
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                      Seed candidate email
+                    </label>
+                    <Input
+                      value={demoCandidateEmail}
+                      onChange={(event) => setDemoCandidateEmail(event.target.value)}
+                      className="h-11 rounded-[1rem] border-white/10 bg-white/5"
+                      disabled={!demoMode}
+                    />
+                  </div>
+                </div>
+              </section>
+
               <section className="signal-panel rounded-[1.6rem] p-5">
                 <div className="flex items-center gap-3 text-primary">
                   <Clock3 className="h-4 w-4" />
@@ -173,14 +372,17 @@ export default function CreateAssessment() {
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 text-primary">
                       <WandSparkles className="h-4 w-4" />
-                      <p className="text-xs uppercase tracking-[0.32em]">Generation prompt</p>
+                      <p className="text-xs uppercase tracking-[0.32em]">
+                        {demoMode ? 'Assessment brief' : 'Generation prompt'}
+                      </p>
                     </div>
                     <h2 className="text-xl leading-tight md:text-2xl">
-                      Keep it concrete.
+                      {demoMode ? 'Ship the fast assessment path.' : 'Keep it concrete.'}
                     </h2>
                     <p className="max-w-sm text-sm leading-6 text-white/58">
-                      Name the actual app, features, bugs, and expected scope. The generator works
-                      better with product details than abstract evaluation notes.
+                      {demoMode
+                        ? 'This mode skips the slow repo generator and uses a fixed launch dashboard workspace with a clean run/test/submit flow.'
+                        : 'Name the actual app, features, bugs, and expected scope. The generator works better with product details than abstract evaluation notes.'}
                     </p>
 
                     <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] p-4">
@@ -193,14 +395,69 @@ export default function CreateAssessment() {
 
                   <div>
                     <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
-                      Prompt
+                      {demoMode ? 'Assessment overview' : 'Prompt'}
                     </label>
                     <Textarea
                       value={generationPrompt}
                       onChange={(event) => setGenerationPrompt(event.target.value)}
-                      className="min-h-[520px] rounded-[1.35rem] border-white/10 bg-black/20 text-sm leading-7"
-                      placeholder="Describe the role, stack, generated project, tests, and the candidate signals you want."
+                      className="min-h-[260px] rounded-[1.35rem] border-white/10 bg-black/20 text-sm leading-7"
+                      placeholder={
+                        demoMode
+                          ? 'Describe the product context the candidate is stepping into.'
+                          : 'Describe the role, stack, generated project, tests, and the candidate signals you want.'
+                      }
                     />
+
+                    {demoMode ? (
+                      <div className="mt-5 grid gap-4">
+                        <div>
+                          <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                            Company codebase
+                          </label>
+                          <Textarea
+                            value={companyCodebase}
+                            onChange={(event) => setCompanyCodebase(event.target.value)}
+                            className="min-h-[112px] rounded-[1.2rem] border-white/10 bg-black/20 text-sm leading-7"
+                            placeholder="Reference repo name, URL, and the implementation context candidates should inherit."
+                          />
+                        </div>
+
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                              Part A
+                            </label>
+                            <Textarea
+                              value={partA}
+                              onChange={(event) => setPartA(event.target.value)}
+                              className="min-h-[170px] rounded-[1.2rem] border-white/10 bg-black/20 text-sm leading-7"
+                              placeholder="Primary implementation scope."
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                              Part B
+                            </label>
+                            <Textarea
+                              value={partB}
+                              onChange={(event) => setPartB(event.target.value)}
+                              className="min-h-[170px] rounded-[1.2rem] border-white/10 bg-black/20 text-sm leading-7"
+                              placeholder="Follow-up improvement or extension."
+                            />
+                          </div>
+                        </div>
+
+                        <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] p-4">
+                          <p className="text-[11px] uppercase tracking-[0.26em] text-white/42">
+                            Candidate brief preview
+                          </p>
+                          <pre className="mt-3 max-h-[280px] overflow-auto whitespace-pre-wrap font-mono text-[12px] leading-6 text-white/66">
+                            {compiledPrompt}
+                          </pre>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </section>
@@ -232,7 +489,7 @@ export default function CreateAssessment() {
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <LiquidButton
                     onClick={() => handleSubmit('draft')}
-                    disabled={submitting !== null || generationPrompt.trim().length < 20 || !Number(durationMinutes)}
+                    disabled={submitting !== null || compiledPrompt.trim().length < 20 || !Number(durationMinutes)}
                     variant="outline"
                     className="h-11 rounded-full px-5"
                   >
@@ -240,16 +497,29 @@ export default function CreateAssessment() {
                   </LiquidButton>
                   <LiquidButton
                     onClick={() => handleSubmit('published')}
-                    disabled={submitting !== null || generationPrompt.trim().length < 20 || !Number(durationMinutes)}
+                    disabled={
+                      submitting !== null ||
+                      compiledPrompt.trim().length < 20 ||
+                      !Number(durationMinutes) ||
+                      (demoMode && !demoCandidateEmail.trim())
+                    }
                     className="h-11 rounded-full px-5"
                   >
                     <SendHorizonal className="mr-2 h-4 w-4" />
-                    {submitting === 'published' ? 'Generating and publishing...' : 'Publish and assign'}
+                    {submitting === 'published'
+                      ? demoMode
+                        ? 'Building workspace and assigning...'
+                        : 'Generating and publishing...'
+                      : demoMode
+                        ? 'Build workspace and assign'
+                        : 'Publish and assign'}
                   </LiquidButton>
                 </div>
               </div>
             </main>
           </div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -20,7 +20,7 @@ const GlassNav = ({ variant = "landing" }: GlassNavProps) => {
           "max-w-7xl mx-auto flex items-center justify-between",
           variant === "landing"
             ? "rounded-[20px] border border-white/10 bg-black/70 px-6 py-4 shadow-[0_30px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
-            : "h-16 px-6"
+            : "h-16"
         )}
       >
         <Link to="/" className="flex items-center gap-3 text-foreground liquid-transition hover:text-white">
@@ -75,34 +75,41 @@ const GlassNav = ({ variant = "landing" }: GlassNavProps) => {
               <Link
                 to="/candidate"
                 className={cn(
-                  "text-sm text-muted-foreground hover:text-foreground liquid-transition",
-                  location.pathname === "/candidate" && "text-primary"
+                  "relative text-sm liquid-transition",
+                  location.pathname === "/candidate"
+                    ? "text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 My Assessments
+                {location.pathname === "/candidate" && (
+                  <span className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+                )}
               </Link>
             </>
           )}
           {variant === "company" && (
             <>
-              <Link
-                to="/dashboard"
-                className={cn(
-                  "text-sm text-muted-foreground hover:text-foreground liquid-transition",
-                  location.pathname === "/dashboard" && "text-primary"
-                )}
-              >
-                Dashboard
-              </Link>
-              <Link
-                to="/dashboard/create"
-                className={cn(
-                  "text-sm text-muted-foreground hover:text-foreground liquid-transition",
-                  location.pathname === "/dashboard/create" && "text-primary"
-                )}
-              >
-                Create
-              </Link>
+              {[
+                { to: "/dashboard", label: "Dashboard" },
+                { to: "/dashboard/create", label: "Create" },
+              ].map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className={cn(
+                    "relative text-sm liquid-transition",
+                    location.pathname === to
+                      ? "text-white"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {label}
+                  {location.pathname === to && (
+                    <span className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+                  )}
+                </Link>
+              ))}
             </>
           )}
         </div>

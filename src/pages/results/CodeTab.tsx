@@ -36,6 +36,15 @@ interface TreeNode {
   isFile: boolean;
 }
 
+function findFirstFile(nodes: TreeNode[]): string {
+  for (const node of nodes) {
+    if (node.isFile) return node.path;
+    const nested = findFirstFile(node.children);
+    if (nested) return nested;
+  }
+  return '';
+}
+
 function buildTree(paths: string[]): TreeNode[] {
   const root: TreeNode[] = [];
 
@@ -102,10 +111,11 @@ function FileTree({
   onSelect: (path: string) => void;
   depth?: number;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(() => {
-    // Expand root-level directories by default
-    return new Set(nodes.filter((n) => !n.isFile).map((n) => n.path));
-  });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setExpanded(new Set(nodes.filter((n) => !n.isFile).map((n) => n.path)));
+  }, [nodes]);
 
   return (
     <div>
@@ -179,11 +189,11 @@ export default function CodeTab({ sessionId, submission, snapshots }: CodeTabPro
 
   // Select first file when files change
   useEffect(() => {
-    const keys = Object.keys(files);
-    if (keys.length > 0 && !files[selectedFile]) {
-      setSelectedFile(keys[0]);
+    const firstFile = findFirstFile(tree);
+    if (firstFile && (!selectedFile || files[selectedFile] === undefined)) {
+      setSelectedFile(firstFile);
     }
-  }, [files, selectedFile]);
+  }, [files, selectedFile, tree]);
 
   const loadSnapshot = useCallback(
     async (snapshotId: string) => {
@@ -260,6 +270,11 @@ export default function CodeTab({ sessionId, submission, snapshots }: CodeTabPro
                 selectedPath={selectedFile}
                 onSelect={setSelectedFile}
               />
+            )}
+            {!loadingSnapshot && tree.length === 0 && (
+              <div className="px-2 py-6 text-sm text-white/40">
+                No files were captured for this source yet.
+              </div>
             )}
           </div>
 
