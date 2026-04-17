@@ -20,6 +20,7 @@ interface AssessmentDetail {
   workspaceEntryFile: string | null;
   workspaceGeneratedAt: string | null;
   workspaceFiles: Record<string, string>;
+  generationStatus: 'pending' | 'processing' | 'completed' | 'failed' | null;
 }
 
 interface ConsoleMessage {
@@ -114,6 +115,15 @@ export default function AssessmentEditor() {
       }
 
       const data = (await res.json()) as AssessmentDetail;
+      const hasFiles = Object.keys(data.workspaceFiles ?? {}).length > 0;
+      const inFlightOrFailed =
+        data.generationStatus === 'pending' ||
+        data.generationStatus === 'processing' ||
+        data.generationStatus === 'failed';
+      if (inFlightOrFailed && !hasFiles) {
+        navigate(`/dashboard/assessments/${data.id}/generation`, { replace: true });
+        return;
+      }
       const filePaths = Object.keys(data.workspaceFiles ?? {}).sort((left, right) =>
         left.localeCompare(right),
       );

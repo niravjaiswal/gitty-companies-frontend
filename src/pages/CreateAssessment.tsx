@@ -7,7 +7,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { apiFetch } from '@/lib/api';
 import { buildAssessmentBrief } from '@/lib/assessmentBrief';
-import { ArrowLeft, Clock3, SendHorizonal, Sparkles, WandSparkles, Zap } from 'lucide-react';
+import { ArrowLeft, Clock3, Library, SendHorizonal, Sparkles, WandSparkles, Zap } from 'lucide-react';
+
+interface SkeletonListItem {
+  id: string;
+  name: string;
+  language: string;
+  pattern: string;
+  description: string;
+  domainTags: string[];
+  skillAxes: string[];
+  difficultyRange: { min: string; max: string };
+  estimatedScope: { min: string; max: string };
+}
 
 function buildInstantPreset(role: string, githubUrl: string) {
   const cleanRole = role.trim() || 'Senior Engineer';
@@ -85,6 +97,8 @@ export default function CreateAssessment() {
   const [isGeneratingPreset, setIsGeneratingPreset] = useState(false);
   const [submitting, setSubmitting] = useState<'draft' | 'published' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [skeletons, setSkeletons] = useState<SkeletonListItem[]>([]);
+  const [skeletonId, setSkeletonId] = useState<string | null>(null);
 
   const compiledPrompt = useMemo(
     () =>
@@ -101,6 +115,22 @@ export default function CreateAssessment() {
 
   const derivedTitle = deriveAssessmentTitle(compiledPrompt);
   const derivedSummary = deriveAssessmentSummary(compiledPrompt);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch('/api/company/skeletons')
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as SkeletonListItem[];
+        if (!cancelled) setSkeletons(data);
+      })
+      .catch(() => {
+        // Picker is optional — backend auto-detects if unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setGenerationPrompt((current) => {
@@ -144,6 +174,7 @@ export default function CreateAssessment() {
           instructionsMd: trimmedPrompt,
           durationMinutes: Number(durationMinutes),
           sourceBrief: trimmedPrompt,
+          skeletonId: !demoMode && skeletonId ? skeletonId : undefined,
           authoringConfig: {
             mode: 'single',
             stages: [],
@@ -161,7 +192,11 @@ export default function CreateAssessment() {
       }
 
       const assessment = await res.json();
-      navigate(`/dashboard/send/${assessment.id}`);
+      const destination =
+        !demoMode && assessment.generationStatus === 'pending'
+          ? `/dashboard/assessments/${assessment.id}/generation`
+          : `/dashboard/send/${assessment.id}`;
+      navigate(destination);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create assessment workspace');
       setSubmitting(null);
@@ -367,6 +402,40 @@ export default function CreateAssessment() {
             </aside>
 
             <main className="space-y-6">
+              {!demoMode && (
+                <section className="signal-panel rounded-[1.7rem] p-5 md:p-6">
+                  <div className="flex items-center gap-3 text-primary">
+                    <Library className="h-4 w-4" />
+                    <p className="text-xs uppercase tracking-[0.32em]">Skeleton</p>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-white/58">
+                    Pick the starter repo Gitty will adapt. Auto-detect uses the brief to choose.
+                  </p>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <SkeletonCard
+                      selected={skeletonId === null}
+                      onClick={() => setSkeletonId(null)}
+                      title="Auto-detect"
+                      subtitle="Pick based on brief"
+                      description="Let the backend choose the closest skeleton from the prompt keywords."
+                      tags={['default']}
+                    />
+                    {skeletons.map((skeleton) => (
+                      <SkeletonCard
+                        key={skeleton.id}
+                        selected={skeletonId === skeleton.id}
+                        onClick={() => setSkeletonId(skeleton.id)}
+                        title={skeleton.name}
+                        subtitle={`${skeleton.pattern} · ${skeleton.language}`}
+                        description={skeleton.description}
+                        tags={skeleton.skillAxes.slice(0, 3)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
               <section className="signal-panel rounded-[1.7rem] p-5 md:p-6">
                 <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
                   <div className="space-y-4">
@@ -523,5 +592,49 @@ export default function CreateAssessment() {
         </div>
       </div>
     </div>
+  );
+}
+
+function SkeletonCard({
+  selected,
+  onClick,
+  title,
+  subtitle,
+  description,
+  tags,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  title: string;
+  subtitle: string;
+  description: string;
+  tags: string[];
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex h-full flex-col rounded-[1.2rem] border px-4 py-4 text-left transition-colors ${
+        selected
+          ? 'border-primary/60 bg-primary/10'
+          : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
+      }`}
+    >
+      <p className="text-[10px] uppercase tracking-[0.26em] text-white/42">{subtitle}</p>
+      <p className="mt-2 text-sm text-white/88">{title}</p>
+      <p className="mt-2 line-clamp-3 text-xs leading-5 text-white/55">{description}</p>
+      {tags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-white/52"
+            >
+              {tag.replace(/_/g, ' ')}
+            </span>
+          ))}
+        </div>
+      )}
+    </button>
   );
 }

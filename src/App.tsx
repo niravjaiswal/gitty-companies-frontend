@@ -15,6 +15,7 @@ import SendAssessment from "./pages/SendAssessment";
 import AssessmentResults from "./pages/AssessmentResults";
 import CandidateResult from "./pages/CandidateResult";
 import AssessmentEditor from "./pages/AssessmentEditor";
+import AssessmentGeneration from "./pages/AssessmentGeneration";
 import CandidatesPage from "./pages/CandidatesPage";
 import NotFound from "./pages/NotFound";
 
@@ -81,6 +82,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AssessmentEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/assessments/:id/generation"
+              element={
+                <ProtectedRoute>
+                  <AssessmentGeneration />
                 </ProtectedRoute>
               }
             />
