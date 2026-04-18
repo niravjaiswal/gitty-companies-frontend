@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, Navigate } from "react-router-dom";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import IDELayout from "@/components/IDE/IDELayout";
@@ -39,23 +39,23 @@ const Assessment = () => {
 
   const [currentQuestion] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-  const question = mockQuestions[currentQuestion];
 
-  if (!sessionId) {
-    return <Navigate to="/verify" replace />;
-  }
-
-  // Simple timer
-  useState(() => {
+  useEffect(() => {
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(interval);
-  });
+  }, []);
 
   const formatTime = useCallback((seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
     const s = (seconds % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
   }, []);
+
+  const question = mockQuestions[currentQuestion];
+
+  if (!sessionId) {
+    return <Navigate to="/verify" replace />;
+  }
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
