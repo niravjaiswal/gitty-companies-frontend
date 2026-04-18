@@ -5,7 +5,7 @@ import LiquidButton from '@/components/LiquidButton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiFetch } from '@/lib/api';
-import { parseAssessmentBrief } from '@/lib/assessmentBrief';
+import { parseAssessmentBrief, partLabel } from '@/lib/assessmentBrief';
 import { ArrowLeft, BarChart3, Copy, MailPlus, Pencil, SendHorizonal } from 'lucide-react';
 
 interface AssessmentDetail {
@@ -246,23 +246,26 @@ export default function SendAssessment() {
 
           <section className="mt-5 grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
             <div className="space-y-5">
-              {(briefSections.companyCodebase || briefSections.partA || briefSections.partB) ? (
+              {(briefSections.companyCodebase || briefSections.parts.some(Boolean)) ? (
                 <div className="editorial-panel rounded-[1.6rem] p-5">
                   <div>
                     <p className="text-xs uppercase tracking-[0.32em] text-white/45">
                       Implementation scope
                     </p>
                     <p className="mt-2 text-sm text-white/55">
-                      Reviewer context for the repo, primary feature, and follow-up extension.
+                      Reviewer context for the repo and each part of the sprint.
                     </p>
                   </div>
 
                   <div className="mt-4 grid gap-3">
-                    {[
-                      ['Company codebase', briefSections.companyCodebase],
-                      ['Part A', briefSections.partA],
-                      ['Part B', briefSections.partB],
-                    ].map(([label, value]) =>
+                    {(
+                      [
+                        ['Company codebase', briefSections.companyCodebase],
+                        ...briefSections.parts.map(
+                          (content, index) => [partLabel(index), content] as const,
+                        ),
+                      ] as Array<readonly [string, string]>
+                    ).map(([label, value]) =>
                       value ? (
                         <div
                           key={label}

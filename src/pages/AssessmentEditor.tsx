@@ -5,7 +5,7 @@ import '@vscode/codicons/dist/codicon.css';
 import GlassNav from '@/components/GlassNav';
 import LiquidButton from '@/components/LiquidButton';
 import { apiFetch } from '@/lib/api';
-import { parseAssessmentBrief } from '@/lib/assessmentBrief';
+import { parseAssessmentBrief, partLabel } from '@/lib/assessmentBrief';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { getFileIconClass } from '@/components/IDE/FileExplorer/fileIcons';
@@ -158,14 +158,16 @@ export default function AssessmentEditor() {
   const problemStatement = [
     '# Gitty Sprint',
     '',
-    '## Part A',
-    '',
-    briefSections.partA || 'No Part A instructions available yet.',
-    '',
-    '## Part B',
-    '',
-    briefSections.partB || 'No Part B instructions available yet.',
-  ].join('\n');
+    ...briefSections.parts.flatMap((content, index) => {
+      const label = partLabel(index);
+      return [
+        `## ${label}`,
+        '',
+        content || `No ${label} instructions available yet.`,
+        '',
+      ];
+    }),
+  ].join('\n').trimEnd();
   function updateSelectedFile(content: string | undefined) {
     if (!selectedFilePath || content === undefined) return;
     setDraftFiles((current) => ({
