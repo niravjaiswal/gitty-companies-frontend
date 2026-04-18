@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import {
   AlertDialog,
@@ -255,40 +257,88 @@ export default function SessionPage() {
                 </div>
               </div>
               <div className="prose prose-invert prose-sm max-w-none font-sans">
-                {(sessionDetail?.assessment?.instructionsMd ?? 'Assessment instructions are loading.')
-                  .split('\n')
-                  .map((line, i) => {
-                  if (line.startsWith('## '))
-                    return (
-                      <h2 key={i} className="font-display text-lg text-foreground mt-6 mb-3">
-                        {line.replace('## ', '')}
-                      </h2>
-                    );
-                  if (line.startsWith('### '))
-                    return (
-                      <h3 key={i} className="font-display text-base text-foreground mt-4 mb-2">
-                        {line.replace('### ', '')}
-                      </h3>
-                    );
-                  if (line.startsWith('```'))
-                    return (
-                      <div key={i} className="glass rounded-lg p-4 font-mono text-xs text-foreground my-3">
-                        {line.replace(/```\w*/, '')}
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({ children }) => (
+                      <h1 className="font-display text-xl text-foreground mt-6 mb-3">{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="font-display text-lg text-foreground mt-6 mb-3">{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="font-display text-base text-foreground mt-4 mb-2">{children}</h3>
+                    ),
+                    p: ({ children }) => (
+                      <p className="text-sm leading-6 text-muted-foreground mb-2">{children}</p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc pl-5 my-2 space-y-1 text-muted-foreground">{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="list-decimal pl-5 my-2 space-y-1 text-muted-foreground">{children}</ol>
+                    ),
+                    li: ({ children }) => <li className="text-sm leading-6">{children}</li>,
+                    a: ({ href, children }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="text-primary underline underline-offset-2 hover:text-primary/80"
+                      >
+                        {children}
+                      </a>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-foreground">{children}</strong>
+                    ),
+                    em: ({ children }) => <em className="italic">{children}</em>,
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-2 border-white/20 pl-4 my-3 text-muted-foreground italic">
+                        {children}
+                      </blockquote>
+                    ),
+                    hr: () => <hr className="my-6 border-white/10" />,
+                    pre: ({ children }) => (
+                      <pre className="glass rounded-lg p-4 font-mono text-xs text-foreground my-3 overflow-x-auto">
+                        {children}
+                      </pre>
+                    ),
+                    code: ({ className, children, ...rest }) => {
+                      const isBlock = /language-/.test(className ?? '');
+                      if (isBlock) {
+                        return (
+                          <code className={className} {...rest}>
+                            {children}
+                          </code>
+                        );
+                      }
+                      return (
+                        <code
+                          className="rounded bg-black/30 px-1.5 py-0.5 font-mono text-[0.85em] text-foreground"
+                          {...rest}
+                        >
+                          {children}
+                        </code>
+                      );
+                    },
+                    table: ({ children }) => (
+                      <div className="my-3 overflow-x-auto">
+                        <table className="w-full text-sm border-collapse">{children}</table>
                       </div>
-                    );
-                  if (line.startsWith('- '))
-                    return (
-                      <li key={i} className="text-muted-foreground ml-4 mb-1">
-                        {line.replace('- ', '')}
-                      </li>
-                    );
-                  if (line.trim() === '') return <br key={i} />;
-                  return (
-                    <p key={i} className="text-muted-foreground mb-2">
-                      {line}
-                    </p>
-                  );
-                })}
+                    ),
+                    th: ({ children }) => (
+                      <th className="border border-white/10 px-3 py-2 text-left font-semibold text-foreground">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="border border-white/10 px-3 py-2 text-muted-foreground">{children}</td>
+                    ),
+                  }}
+                >
+                  {sessionDetail?.assessment?.instructionsMd ?? 'Assessment instructions are loading.'}
+                </ReactMarkdown>
               </div>
             </div>
           </div>
