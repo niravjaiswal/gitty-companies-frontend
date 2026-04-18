@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import GlassNav from '@/components/GlassNav';
 import { apiFetch } from '@/lib/api';
-import { parseAssessmentBrief } from '@/lib/assessmentBrief';
+import { parseAssessmentBrief, partLabel } from '@/lib/assessmentBrief';
 import { ArrowLeft, Bot, Clock, FileCode, GitBranch, Sparkles, Terminal, Wifi } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
@@ -178,12 +178,12 @@ export default function CandidateResult() {
     {
       label: 'Implementation read',
       detail:
-        briefSections.partA || 'Primary feature scope is visible in the generated brief and final submission.',
+        briefSections.parts[0] || 'Primary feature scope is visible in the generated brief and final submission.',
     },
     {
       label: 'Extension read',
       detail:
-        briefSections.partB || 'Follow-up scope is available for reviewer comparison against the final codebase.',
+        briefSections.parts[1] || 'Follow-up scope is available for reviewer comparison against the final codebase.',
     },
     {
       label: 'Agent strategy',
@@ -336,11 +336,14 @@ export default function CandidateResult() {
             <div className="editorial-panel rounded-[1.9rem] p-6">
               <p className="text-xs uppercase tracking-[0.32em] text-white/45">Company brief</p>
               <div className="mt-4 space-y-3">
-                {[
-                  ['Company codebase', briefSections.companyCodebase],
-                  ['Part A', briefSections.partA],
-                  ['Part B', briefSections.partB],
-                ].map(([label, value]) => (
+                {(
+                  [
+                    ['Company codebase', briefSections.companyCodebase],
+                    ...briefSections.parts.map(
+                      (content, index) => [partLabel(index), content] as const,
+                    ),
+                  ] as Array<readonly [string, string]>
+                ).map(([label, value]) => (
                   <div
                     key={label}
                     className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-4 py-4"

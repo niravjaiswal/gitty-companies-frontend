@@ -1,8 +1,7 @@
 export interface AssessmentBriefSections {
   overview: string;
   companyCodebase: string;
-  partA: string;
-  partB: string;
+  parts: string[];
 }
 
 function getSection(markdown: string, heading: string): string {
@@ -12,42 +11,38 @@ function getSection(markdown: string, heading: string): string {
   return match?.[1]?.trim() ?? '';
 }
 
+export function partLabel(index: number): string {
+  return `Part ${String.fromCharCode(65 + index)}`;
+}
+
 export function buildAssessmentBrief(input: {
   overview: string;
   companyCodebase: string;
-  partA: string;
-  partB: string;
+  parts: string[];
 }): string {
   const overview = input.overview.trim();
   const companyCodebase = input.companyCodebase.trim();
-  const partA = input.partA.trim();
-  const partB = input.partB.trim();
+  const parts = input.parts.map((part) => part.trim());
 
-  return `# Gitty Sprint
+  const lines: string[] = ['# Gitty Sprint', '', '## Overview', '', overview, '', '## Company codebase', '', companyCodebase];
+  parts.forEach((part, index) => {
+    lines.push('', `## ${partLabel(index)}`, '', part);
+  });
 
-## Overview
-
-${overview}
-
-## Company codebase
-
-${companyCodebase}
-
-## Part A
-
-${partA}
-
-## Part B
-
-${partB}
-`.trim();
+  return lines.join('\n').trimEnd() + '\n';
 }
 
 export function parseAssessmentBrief(markdown: string): AssessmentBriefSections {
-  return {
-    overview: getSection(markdown, 'Overview'),
-    companyCodebase: getSection(markdown, 'Company codebase'),
-    partA: getSection(markdown, 'Part A'),
-    partB: getSection(markdown, 'Part B'),
-  };
+  const overview = getSection(markdown, 'Overview');
+  const companyCodebase = getSection(markdown, 'Company codebase');
+
+  const parts: string[] = [];
+  for (let index = 0; index < 26; index += 1) {
+    const content = getSection(markdown, partLabel(index));
+    if (!content && index > 0) break;
+    parts.push(content);
+  }
+  if (parts.length === 0) parts.push('');
+
+  return { overview, companyCodebase, parts };
 }
