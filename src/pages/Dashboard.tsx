@@ -7,10 +7,13 @@ import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ArrowRight,
+  Archive,
   BarChart3,
   Building2,
   CheckCircle2,
-  Clock,
+  Circle,
+  Clock3,
+  FileEdit,
   Plus,
   Search,
   Sparkles,
@@ -45,10 +48,25 @@ interface AssessmentSummary {
   workspaceFileCount: number;
 }
 
-const STATUS_STYLES: Record<AssessmentSummary['status'], string> = {
-  published: 'badge-published',
-  draft: 'badge-draft',
-  archived: 'badge-archived',
+const statusConfig: Record<
+  AssessmentSummary['status'],
+  { label: string; color: string; icon: typeof Circle }
+> = {
+  published: {
+    label: 'Published',
+    color: 'text-primary border-primary/25 bg-primary/8',
+    icon: Zap,
+  },
+  draft: {
+    label: 'Draft',
+    color: 'text-amber-400 border-amber-400/25 bg-amber-400/8',
+    icon: FileEdit,
+  },
+  archived: {
+    label: 'Archived',
+    color: 'text-white/40 border-white/10 bg-white/4',
+    icon: Archive,
+  },
 };
 
 export default function Dashboard() {
@@ -322,77 +340,110 @@ export default function Dashboard() {
 
             {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
 
-            {/* Assessment cards */}
-            <section className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((assessment, index) => (
-                <Tilt3D key={assessment.id} intensity={6} lift={5}>
-                <article
-                  className="assessment-card-accent editorial-panel group rounded-[1.15rem] p-5"
-                  style={{ animationDelay: `${index * 80}ms` }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span
-                      className={`rounded-md px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${STATUS_STYLES[assessment.status]}`}
+            {/* Assessments table */}
+            {filtered.length > 0 && (
+              <section className="mt-4 editorial-panel overflow-hidden rounded-[1.35rem]">
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_110px_90px_170px] items-center gap-4 border-b border-white/8 px-6 py-3 text-[10px] uppercase tracking-[0.28em] text-white/35 md:grid-cols-[1fr_110px_90px_160px_110px_170px]">
+                  <span>Assessment</span>
+                  <span>Status</span>
+                  <span>Duration</span>
+                  <span className="hidden md:block">Assignments</span>
+                  <span className="hidden md:block">Created</span>
+                  <span className="text-right">Actions</span>
+                </div>
+
+                {/* Rows */}
+                {filtered.map((assessment) => {
+                  const config = statusConfig[assessment.status];
+                  const StatusIcon = config.icon;
+                  return (
+                    <div
+                      key={assessment.id}
+                      className="group grid grid-cols-[1fr_110px_90px_170px] items-center gap-4 border-b border-white/[0.04] px-6 py-4 transition-colors last:border-0 hover:bg-white/[0.02] md:grid-cols-[1fr_110px_90px_160px_110px_170px]"
                     >
-                      {assessment.status}
-                    </span>
-                    <span className="flex items-center gap-1.5 text-sm text-white/45">
-                      <Clock className="h-3.5 w-3.5" />
-                      {assessment.durationMinutes} min
-                    </span>
-                  </div>
-                  <h2 className="mt-4 text-2xl leading-tight">{assessment.title}</h2>
-                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/60">
-                    {assessment.summary || assessment.instructionsMd}
-                  </p>
-
-                  <div className="mt-5 grid grid-cols-3 gap-2.5 text-center text-sm">
-                    {[
-                      { label: 'Sent', value: assessment.assignmentCount },
-                      { label: 'Live', value: assessment.inProgressCount },
-                      { label: 'Done', value: assessment.completedCount },
-                    ].map(({ label, value }) => (
-                      <div
-                        key={label}
-                        className="rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3"
-                      >
-                        <div className="text-xl font-display">{value}</div>
-                        <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
-                          {label}
-                        </div>
+                      {/* Title + summary */}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-white/90">
+                          {assessment.title}
+                        </p>
+                        {assessment.summary && (
+                          <p className="mt-0.5 truncate text-xs text-white/45">
+                            {assessment.summary}
+                          </p>
+                        )}
                       </div>
-                    ))}
-                  </div>
 
-                  <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-white/38">
-                    {assessment.workspaceFileCount} workspace files generated
-                  </p>
+                      {/* Status */}
+                      <span
+                        className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${config.color}`}
+                      >
+                        <StatusIcon className="h-3 w-3 shrink-0" />
+                        <span className="hidden sm:inline">{config.label}</span>
+                      </span>
 
-                  <div className="mt-5 flex items-center justify-between border-t border-white/8 pt-4">
-                    <span className="text-xs text-white/42">
-                      {new Date(assessment.createdAt).toLocaleDateString()}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => navigate(`/dashboard/assessments/${assessment.id}/results`)}
-                        className="inline-flex items-center gap-2 text-sm text-white/55 transition-colors hover:text-white"
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                        Results
-                      </button>
-                      <button
-                        onClick={() => navigate(`/dashboard/send/${assessment.id}`)}
-                        className="inline-flex items-center gap-2 text-sm text-primary transition-colors hover:text-white"
-                      >
-                        Manage
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                      </button>
+                      {/* Duration */}
+                      <span className="inline-flex items-center gap-1.5 text-xs text-white/40">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                        {assessment.durationMinutes} min
+                      </span>
+
+                      {/* Assignments pills */}
+                      <div className="hidden items-center gap-1.5 md:flex">
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-white/55"
+                          title="Sent"
+                        >
+                          <span className="font-display text-white/80">
+                            {assessment.assignmentCount}
+                          </span>
+                          sent
+                        </span>
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/8 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-amber-300/80"
+                          title="In progress"
+                        >
+                          <span className="font-display">{assessment.inProgressCount}</span>
+                          live
+                        </span>
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md border border-emerald-400/20 bg-emerald-400/8 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-emerald-300/80"
+                          title="Completed"
+                        >
+                          <span className="font-display">{assessment.completedCount}</span>
+                          done
+                        </span>
+                      </div>
+
+                      {/* Created */}
+                      <span className="hidden text-xs text-white/40 md:inline">
+                        {new Date(assessment.createdAt).toLocaleDateString()}
+                      </span>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() =>
+                            navigate(`/dashboard/assessments/${assessment.id}/results`)
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70 transition-colors hover:border-white/20 hover:text-white"
+                        >
+                          <BarChart3 className="h-3 w-3" />
+                          Results
+                        </button>
+                        <button
+                          onClick={() => navigate(`/dashboard/send/${assessment.id}`)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(255,103,16,0.18)] transition-all hover:scale-[1.03] hover:shadow-[0_8px_24px_rgba(255,103,16,0.28)] active:scale-[0.98]"
+                        >
+                          Manage
+                          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-                </Tilt3D>
-              ))}
-            </section>
+                  );
+                })}
+              </section>
+            )}
 
             {filtered.length === 0 && (
               <section className="mt-6 editorial-panel rounded-[1.15rem] p-12 text-center">
