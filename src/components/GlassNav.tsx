@@ -93,6 +93,7 @@ const GlassNav = ({ variant = "landing" }: GlassNavProps) => {
               {[
                 { to: "/dashboard", label: "Dashboard" },
                 { to: "/dashboard/create", label: "Create" },
+                { to: "/dashboard/talent", label: "Find Talent" },
               ].map(({ to, label }) => (
                 <Link
                   key={to}

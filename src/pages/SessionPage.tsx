@@ -48,6 +48,7 @@ export default function SessionPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -127,15 +128,17 @@ export default function SessionPage() {
     if (!id || submitting) return;
     setShowConfirm(false);
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const res = await apiFetch(`/api/sessions/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setSubmitted(true);
       } else {
-        console.error('Submit failed:', res.status, await res.text().catch(() => ''));
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        setSubmitError(body.error ?? 'Submission failed. Please try again.');
       }
-    } catch (err) {
-      console.error('Submit error:', err);
+    } catch {
+      setSubmitError('Network error. Please check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -173,7 +176,7 @@ export default function SessionPage() {
       {/* Top bar */}
       <div className="glass border-b border-border/50 h-14 flex items-center justify-between px-6 shrink-0 z-20">
         <div className="flex items-center gap-4">
-          <span className="font-display text-sm text-foreground tracking-wider">TECHASSESS</span>
+          <span className="font-display text-sm text-foreground tracking-wider">gitty</span>
           <span className="w-px h-5 bg-border" />
           <span className="text-sm text-muted-foreground font-sans">Technical Assessment</span>
         </div>
@@ -186,9 +189,14 @@ export default function SessionPage() {
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span className="font-display text-sm text-foreground">{formatTime(elapsed)}</span>
           </div>
-          <Button size="sm" disabled={submitting} onClick={() => setShowConfirm(true)}>
-            {submitting ? 'Submitting...' : 'Submit Assessment'}
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button size="sm" disabled={submitting} onClick={() => setShowConfirm(true)}>
+              {submitting ? 'Submitting...' : 'Submit Assessment'}
+            </Button>
+            {submitError && (
+              <p className="text-xs text-red-400">{submitError}</p>
+            )}
+          </div>
           <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
             <AlertDialogContent>
               <AlertDialogHeader>

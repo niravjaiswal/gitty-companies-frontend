@@ -17,6 +17,7 @@ import CandidateResult from "./pages/CandidateResult";
 import AssessmentEditor from "./pages/AssessmentEditor";
 import AssessmentGeneration from "./pages/AssessmentGeneration";
 import CandidatesPage from "./pages/CandidatesPage";
+import TalentDiscovery from "./pages/TalentDiscovery";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -106,6 +107,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <CandidateResult />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/talent"
+              element={
+                <ProtectedRoute>
+                  <TalentDiscovery />
                 </ProtectedRoute>
               }
             />

@@ -10,6 +10,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import TimelineTab from './results/TimelineTab';
 import CodeTab from './results/CodeTab';
 import AIUsageTab from './results/AIUsageTab';
+import GradingTab, { type CandidateGrade } from './results/GradingTab';
 
 interface TimelineEntry {
   at: string;
@@ -104,6 +105,7 @@ export default function CandidateResult() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
   const [transcripts, setTranscripts] = useState<TranscriptMeta[]>([]);
+  const [grade, setGrade] = useState<CandidateGrade | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,12 +117,13 @@ export default function CandidateResult() {
       setError(null);
 
       try {
-        const [timelineRes, submissionRes, snapshotsRes, transcriptsRes] =
+        const [timelineRes, submissionRes, snapshotsRes, transcriptsRes, gradeRes] =
           await Promise.all([
             apiFetch(`/api/sessions/${sessionId}/timeline`),
             apiFetch(`/api/sessions/${sessionId}/submission`),
             apiFetch(`/api/sessions/${sessionId}/snapshots`),
             apiFetch(`/api/sessions/${sessionId}/claude-transcripts`),
+            apiFetch(`/api/sessions/${sessionId}/grade`),
           ]);
 
         if (!timelineRes.ok) throw new Error('Failed to load timeline');
@@ -145,6 +148,11 @@ export default function CandidateResult() {
         if (transcriptsRes.ok) {
           const trData = await transcriptsRes.json();
           setTranscripts(trData.transcripts ?? []);
+        }
+
+        if (gradeRes.ok) {
+          const gradeData = await gradeRes.json();
+          setGrade(gradeData as CandidateGrade);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load');
@@ -484,27 +492,67 @@ export default function CandidateResult() {
               </div>
 
               <div className="mt-5 grid gap-3 md:grid-cols-3">
-                {[
-                  ['Code quality', '88', 'Clear function boundaries and visible reviewer handoff.'],
-                  ['Feature completeness', '92', 'Part A and Part B both show up in the final experience.'],
-                  ['Agent judgment', '84', 'Delegation appears targeted instead of noisy.'],
-                ].map(([label, score, detail]) => (
-                  <div
-                    key={label}
-                    className="rounded-[1.15rem] border border-white/10 bg-white/[0.04] px-4 py-4"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/40">{label}</p>
-                    <p className="mt-3 text-3xl text-white">{score}</p>
-                    <p className="mt-2 text-sm leading-6 text-white/60">{detail}</p>
-                  </div>
-                ))}
+                {grade
+                  ? [
+                      {
+                        label: 'Code quality',
+                        score: grade.codeQuality.score,
+                        detail: grade.codeQuality.summary.split('.')[0] + '.',
+                      },
+                      {
+                        label: 'Agent judgment',
+                        score: grade.agentUsage.score,
+                        detail: grade.agentUsage.summary.split('.')[0] + '.',
+                      },
+                      {
+                        label: 'Domain knowledge',
+                        score: grade.industryKnowledge.score,
+                        detail: grade.industryKnowledge.summary.split('.')[0] + '.',
+                      },
+                    ].map(({ label, score, detail }) => (
+                      <div
+                        key={label}
+                        className="rounded-[1.15rem] border border-white/10 bg-white/[0.04] px-4 py-4"
+                      >
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-white/40">{label}</p>
+                        <p className={`mt-3 text-3xl ${score >= 80 ? 'text-emerald-300' : score >= 65 ? 'text-primary' : 'text-amber-300'}`}>
+                          {score}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-white/60">{detail}</p>
+                      </div>
+                    ))
+                  : [
+                      ['Code quality', '—', 'Run AI grading to see this score.'],
+                      ['Agent judgment', '—', 'Run AI grading to see this score.'],
+                      ['Domain knowledge', '—', 'Run AI grading to see this score.'],
+                    ].map(([label, score, detail]) => (
+                      <div
+                        key={label as string}
+                        className="rounded-[1.15rem] border border-white/10 bg-white/[0.04] px-4 py-4"
+                      >
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-white/40">{label}</p>
+                        <p className="mt-3 text-3xl text-white/25">{score}</p>
+                        <p className="mt-2 text-sm leading-6 text-white/40">{detail}</p>
+                      </div>
+                    ))}
               </div>
             </div>
           </section>
 
           <section className="mt-6">
-            <Tabs defaultValue="code" className="w-full">
+            <Tabs defaultValue="grading" className="w-full">
               <TabsList className="w-full justify-start border-b border-white/8 bg-transparent p-0 rounded-none">
+                <TabsTrigger
+                  value="grading"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-white/55 px-6 py-3"
+                >
+                  AI Grading
+                  {grade && (
+                    <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-primary">
+                      {grade.compositeScore}
+                    </span>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger
                   value="review"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-white/55 px-6 py-3"
@@ -530,6 +578,13 @@ export default function CandidateResult() {
                   AI Usage
                 </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="grading" className="mt-6">
+                <GradingTab
+                  sessionId={sessionId!}
+                  initialGrade={grade}
+                />
+              </TabsContent>
 
               <TabsContent value="review" className="mt-6">
                 <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">

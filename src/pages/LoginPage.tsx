@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
-import { ArrowRight, BriefcaseBusiness, CheckCircle2, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, UserRound, Zap, Shield, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
@@ -53,44 +53,33 @@ export default function LoginPage() {
           return;
         }
       } catch {
-        // Fall through to explicit role handling.
+        // Backend unreachable — fall through to role-based routing
       }
+
+      if (cancelled) return;
 
       const nextRole = getUserRole(user) ?? readStoredRole();
 
       if (!nextRole) {
-        if (!cancelled) {
-          setNeedsRoleSelection(true);
-          setIsResolvingHome(false);
-        }
+        setNeedsRoleSelection(true);
+        setIsResolvingHome(false);
         return;
       }
 
       window.localStorage.setItem(ACCOUNT_ROLE_KEY, nextRole);
-
-      if (!cancelled) {
-        navigate(nextRole === "company" ? "/dashboard" : "/candidate", { replace: true });
-      }
+      navigate(nextRole === "company" ? "/dashboard" : "/candidate", { replace: true });
     }
 
     void resolveHome();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user, isLoading, navigate]);
 
   async function handleRoleSelection(role: AccountRole) {
     if (!user) return;
-
     setIsSavingRole(true);
     setRoleError(null);
 
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        account_role: role,
-      },
-    });
+    const { error } = await supabase.auth.updateUser({ data: { account_role: role } });
 
     if (error) {
       setRoleError(error.message);
@@ -104,72 +93,84 @@ export default function LoginPage() {
 
   if (isLoading || isResolvingHome) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505]">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+            {isResolvingHome ? "Routing you..." : "Loading"}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#050505] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-background text-white">
+      {/* Animated grid background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="gitty-grid-plane gitty-grid-plane-a" />
         <div className="gitty-grid-plane gitty-grid-plane-b" />
       </div>
 
-      <div className="relative z-10 mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-10 px-6 py-8 lg:grid-cols-[1fr_520px] lg:items-center">
-        <section className="flex flex-col justify-center pt-24 lg:pt-12">
-          <div className="inline-flex w-fit items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/68 backdrop-blur-sm">
-            <img src="/gitty.png" alt="Gitty logo" className="h-8 w-8 rounded-lg object-contain" />
-            <span className="font-display text-xl tracking-[0.04em]">gitty</span>
+      <div className="relative z-10 mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-10 px-6 py-8 lg:grid-cols-[1fr_480px] lg:items-center">
+
+        {/* Left panel — value props */}
+        <section className="flex flex-col justify-center pt-20 lg:pt-0">
+          <div className="inline-flex w-fit items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 backdrop-blur-sm">
+            <img src="/gitty.png" alt="Gitty logo" className="h-7 w-7 rounded-lg object-contain" />
+            <span className="font-display text-lg tracking-[0.06em]">gitty.ai</span>
           </div>
 
-          <p className="mt-10 text-xs uppercase tracking-[0.32em] text-white/45">Single sign-in. Clear routing.</p>
-          <h1 className="mt-5 max-w-2xl font-display text-5xl leading-[1] text-white sm:text-6xl lg:text-7xl">
-            One auth page.
+          <p className="mt-10 text-[11px] uppercase tracking-[0.42em] text-primary/80">
+            AI-Powered Hiring
+          </p>
+          <h1 className="mt-4 max-w-xl font-display text-5xl leading-[1.05] sm:text-6xl">
+            Technical hiring,
             <br />
-            <span className="italic text-white/92">Two paths after login.</span>
+            <span className="text-white/55">done right.</span>
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-white/60">
-            Sign in once with email or Google. If we already know your workspace, we route you there.
-            If not, you choose whether you are hiring or applying and Gitty remembers it.
+          <p className="mt-6 max-w-lg text-base leading-7 text-white/55">
+            Companies create AI-scored coding assessments. Candidates complete them
+            in a live sandbox. One sign-in routes everyone to the right place.
           </p>
 
-          <div className="mt-10 grid max-w-2xl gap-4 sm:grid-cols-3">
+          <div className="mt-10 grid max-w-xl gap-3 sm:grid-cols-3">
             {[
-              "Google and email sign-in",
-              "Company vs employee choice after auth",
-              "Existing workspaces route automatically",
-            ].map((item) => (
-              <div key={item} className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
-                <CheckCircle2 className="h-5 w-5 text-white/80" />
-                <p className="mt-4 text-sm leading-6 text-white/62">{item}</p>
+              { icon: Zap, label: "AI assessment generation" },
+              { icon: BarChart3, label: "Live scoring & grading" },
+              { icon: Shield, label: "Secure sandboxed sessions" },
+            ].map(({ icon: Icon, label }) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 backdrop-blur-sm"
+              >
+                <Icon className="h-4 w-4 text-primary" />
+                <p className="mt-3 text-sm leading-5 text-white/60">{label}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="flex items-center justify-center py-8">
-          <div className="w-full overflow-hidden rounded-[32px] border border-white/10 bg-[#0b0b0d]/88 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-            <div className="border-b border-white/10 px-7 py-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/6">
-                  <Sparkles className="h-6 w-6 text-white/85" />
-                </div>
-                <div>
-                  <h2 className="font-display text-3xl text-white">
-                    {needsRoleSelection ? "Choose your path" : "Sign in to Gitty"}
-                  </h2>
-                  <p className="mt-1 text-sm text-white/50">
-                    {needsRoleSelection
-                      ? "Tell us whether this account is for hiring or applying."
-                      : "Use email or Google. New accounts can choose a role after sign-in."}
-                  </p>
-                </div>
-              </div>
+        {/* Right panel — auth card */}
+        <section className="flex items-center justify-center py-10 lg:py-0">
+          <div className="w-full overflow-hidden rounded-[28px] border border-white/10 bg-[#0b0b0e]/90 shadow-[0_32px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+
+            {/* Card header */}
+            <div className="border-b border-white/8 px-7 py-6">
+              <h2 className="font-display text-2xl text-white">
+                {needsRoleSelection ? "Choose your path" : "Sign in to Gitty"}
+              </h2>
+              <p className="mt-1.5 text-sm text-white/45">
+                {needsRoleSelection
+                  ? "Tell us whether this account is for hiring or applying."
+                  : "Email or Google — your workspace is waiting."}
+              </p>
             </div>
 
+            {/* Card body */}
             <div className="px-7 py-7">
+
+              {/* Auth form — shown when not signed in */}
               {!user && (
                 <div className="gitty-auth-shell">
                   <Auth
@@ -180,34 +181,38 @@ export default function LoginPage() {
                         default: {
                           colors: {
                             brand: "#ffffff",
-                            brandAccent: "#d7d7d7",
-                            defaultButtonBackground: "rgba(255, 255, 255, 0.04)",
-                            defaultButtonBackgroundHover: "rgba(255, 255, 255, 0.08)",
-                            defaultButtonBorder: "rgba(255, 255, 255, 0.12)",
+                            brandAccent: "#d4d4d4",
+                            defaultButtonBackground: "rgba(255,255,255,0.04)",
+                            defaultButtonBackgroundHover: "rgba(255,255,255,0.08)",
+                            defaultButtonBorder: "rgba(255,255,255,0.12)",
                             defaultButtonText: "#f4f4f5",
-                            dividerBackground: "rgba(255, 255, 255, 0.12)",
-                            inputBackground: "#121216",
+                            dividerBackground: "rgba(255,255,255,0.10)",
+                            inputBackground: "#111115",
                             inputText: "#f4f4f5",
-                            inputPlaceholder: "rgba(255, 255, 255, 0.38)",
-                            inputBorder: "rgba(255, 255, 255, 0.1)",
-                            inputBorderHover: "rgba(255, 255, 255, 0.18)",
-                            inputBorderFocus: "#ffffff",
+                            inputPlaceholder: "rgba(255,255,255,0.35)",
+                            inputBorder: "rgba(255,255,255,0.09)",
+                            inputBorderHover: "rgba(255,255,255,0.18)",
+                            inputBorderFocus: "rgba(255,255,255,0.5)",
                             messageText: "#f4f4f5",
-                            messageTextDanger: "#ffb4b4",
-                            anchorTextColor: "#f4f4f5",
+                            messageTextDanger: "#fca5a5",
+                            anchorTextColor: "rgba(255,255,255,0.7)",
                           },
                           radii: {
-                            borderRadiusButton: "18px",
-                            buttonBorderRadius: "18px",
-                            inputBorderRadius: "16px",
+                            borderRadiusButton: "14px",
+                            buttonBorderRadius: "14px",
+                            inputBorderRadius: "14px",
                           },
                           borderWidths: {
                             buttonBorderWidth: "1px",
                             inputBorderWidth: "1px",
                           },
                           space: {
-                            inputPadding: "14px",
-                            buttonPadding: "14px",
+                            inputPadding: "13px 16px",
+                            buttonPadding: "13px 16px",
+                          },
+                          fontSizes: {
+                            baseBodySize: "14px",
+                            baseLabelSize: "11px",
                           },
                         },
                       },
@@ -230,37 +235,33 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {/* Role selection — shown after sign-in when role is unknown */}
               {user && needsRoleSelection && (
-                <div className="space-y-4">
-                  <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-sm text-white/56">
-                      Signed in as <span className="text-white">{user.email}</span>
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-white/52">
-                      Choose the default experience for this account. Existing company accounts will still
-                      route straight into the dashboard.
-                    </p>
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-5 py-4">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">Signed in as</p>
+                    <p className="mt-1 truncate text-sm text-white/85">{user.email}</p>
                   </div>
 
                   <button
                     type="button"
                     disabled={isSavingRole}
                     onClick={() => void handleRoleSelection("employee")}
-                    className="group w-full rounded-[24px] border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="group w-full cursor-pointer rounded-2xl border border-white/8 bg-white/[0.03] p-5 text-left transition-all duration-200 hover:border-white/16 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/6">
-                          <UserRound className="h-6 w-6 text-white/85" />
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/8 bg-white/[0.04]">
+                          <UserRound className="h-5 w-5 text-white/70" />
                         </div>
                         <div>
-                          <div className="font-display text-2xl text-white">I’m an employee</div>
-                          <p className="mt-2 text-sm leading-6 text-white/56">
-                            Review assigned assessments, complete sessions, and see your candidate workspace.
+                          <p className="font-display text-lg text-white">I'm a candidate</p>
+                          <p className="mt-0.5 text-xs leading-5 text-white/45">
+                            Take assessments and view your results
                           </p>
                         </div>
                       </div>
-                      <ArrowRight className="mt-1 h-5 w-5 text-white/55 transition group-hover:translate-x-0.5 group-hover:text-white" />
+                      <ArrowRight className="h-4 w-4 shrink-0 text-white/30 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-white/60" />
                     </div>
                   </button>
 
@@ -268,36 +269,50 @@ export default function LoginPage() {
                     type="button"
                     disabled={isSavingRole}
                     onClick={() => void handleRoleSelection("company")}
-                    className="group w-full rounded-[24px] border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="group w-full cursor-pointer rounded-2xl border border-primary/25 bg-primary/[0.06] p-5 text-left transition-all duration-200 hover:border-primary/40 hover:bg-primary/[0.1] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/6">
-                          <BriefcaseBusiness className="h-6 w-6 text-white/85" />
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+                          <BriefcaseBusiness className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <div className="font-display text-2xl text-white">I’m a company</div>
-                          <p className="mt-2 text-sm leading-6 text-white/56">
-                            Create a workspace, publish assessments, assign candidates, and review results.
+                          <p className="font-display text-lg text-white">I'm hiring</p>
+                          <p className="mt-0.5 text-xs leading-5 text-white/45">
+                            Create assessments and review candidates
                           </p>
                         </div>
                       </div>
-                      <ArrowRight className="mt-1 h-5 w-5 text-white/55 transition group-hover:translate-x-0.5 group-hover:text-white" />
+                      <ArrowRight className="h-4 w-4 shrink-0 text-primary/40 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary/80" />
                     </div>
                   </button>
 
                   {roleError && (
-                    <div className="rounded-[18px] border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+                    <div className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-300">
                       {roleError}
+                    </div>
+                  )}
+
+                  {isSavingRole && (
+                    <div className="flex items-center justify-center gap-2 py-2 text-xs text-white/40">
+                      <div className="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white/60" />
+                      Setting up your account...
                     </div>
                   )}
                 </div>
               )}
 
+              {/* Routing notice — signed in with known role */}
               {user && !needsRoleSelection && knownRole && (
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 text-sm text-white/58">
-                  Signed in as <span className="text-white">{user.email}</span>. Routing you to the{" "}
-                  <span className="text-white">{knownRole === "company" ? "company dashboard" : "employee workspace"}</span>.
+                <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-5 py-4">
+                  <div className="h-4 w-4 animate-spin rounded-full border border-white/20 border-t-white/60 shrink-0" />
+                  <p className="text-sm text-white/55">
+                    Routing to{" "}
+                    <span className="text-white/85">
+                      {knownRole === "company" ? "company dashboard" : "your assessments"}
+                    </span>
+                    ...
+                  </p>
                 </div>
               )}
             </div>

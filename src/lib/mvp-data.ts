@@ -4,7 +4,7 @@ export type AssessmentMode = "agent-native" | "hybrid" | "pairing";
 export type AssessmentDifficulty = "easy" | "medium" | "hard" | "staff";
 export type SessionStatus = "pending" | "active" | "completed" | "expired" | "abandoned";
 export type CandidateStatus = "invited" | "in_progress" | "completed" | "reviewed" | "blocked";
-export type ScoreDecision = "strong_yes" | "yes" | "maybe" | "no";
+export type ScoreDecision = "strong_yes" | "yes" | "maybe" | "no" | "strong_no";
 export type RubricDimensionId =
   | "logic"
   | "agent_orchestration"

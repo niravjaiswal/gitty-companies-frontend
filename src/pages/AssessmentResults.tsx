@@ -44,6 +44,16 @@ interface AssignmentSubmission {
   submittedAt: string;
 }
 
+interface AssignmentGrade {
+  compositeScore: number;
+  recommendation: string;
+  codeQualityScore: number;
+  agentUsageScore: number;
+  promptingQualityScore: number;
+  industryKnowledgeScore: number;
+  gradedAt: string;
+}
+
 interface EnrichedAssignment {
   id: string;
   candidateEmail: string;
@@ -55,6 +65,7 @@ interface EnrichedAssignment {
   sessionId: string | null;
   sessionStatus: string | null;
   submission: AssignmentSubmission | null;
+  grade: AssignmentGrade | null;
 }
 
 type FilterStatus = 'all' | 'completed' | 'started' | 'pending';
@@ -66,6 +77,21 @@ const statusTone: Record<string, string> = {
   completed: 'text-emerald-300',
   expired: 'text-rose-300',
 };
+
+const RECOMMENDATION_LABEL: Record<string, string> = {
+  strong_yes: 'Strong Yes',
+  yes: 'Yes',
+  maybe: 'Maybe',
+  no: 'No',
+  strong_no: 'Strong No',
+};
+
+function scoreColor(score: number): string {
+  if (score >= 85) return 'text-emerald-300';
+  if (score >= 70) return 'text-primary';
+  if (score >= 55) return 'text-amber-300';
+  return 'text-rose-300';
+}
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -83,22 +109,6 @@ const throughputData = [
   { stage: 'Start', score: 15, benchmark: 12 },
   { stage: 'Ship', score: 11, benchmark: 9 },
   { stage: 'Review', score: 9, benchmark: 7 },
-];
-
-const signalTrendData = [
-  { day: 'Mon', quality: 72, agent: 44 },
-  { day: 'Tue', quality: 76, agent: 52 },
-  { day: 'Wed', quality: 79, agent: 58 },
-  { day: 'Thu', quality: 83, agent: 63 },
-  { day: 'Fri', quality: 88, agent: 69 },
-];
-
-const rubricRadarData = [
-  { area: 'Implementation', value: 89 },
-  { area: 'Testing', value: 82 },
-  { area: 'Judgment', value: 86 },
-  { area: 'Speed', value: 78 },
-  { area: 'Agent leverage', value: 84 },
 ];
 
 export default function AssessmentResults() {
@@ -160,16 +170,73 @@ export default function AssessmentResults() {
     return assignments.filter((a) => ['assigned', 'claimed'].includes(a.status));
   }, [assignments, filter]);
 
-  const leaderboard = useMemo(
-    () =>
-      assignments
-        .map((assignment, index) => ({
-          ...assignment,
-          score:
-            78 +
-            (assignment.submission?.totalFileChanges ?? 0) +
-            (assignment.submission?.totalClaudePrompts ?? 0) * 2 +
-            Math.max(0, 8 - index),
+  const gradeStats = useMemo(() => {
+    const graded = assignments.filter((a) => a.grade !== null);
+    if (graded.length === 0) return null;
+
+    const avg = (fn: (g: AssignmentGrade) => number) =>
+      Math.round(graded.reduce((sum, a) => sum + fn(a.grade!), 0) / graded.length);
+
+    return {
+      count: graded.length,
+      avgComposite: avg((g) => g.compositeScore),
+      avgCodeQuality: avg((g) => g.codeQualityScore),
+      avgAgentUsage: avg((g) => g.agentUsageScore),
+      avgPrompting: avg((g) => g.promptingQualityScore),
+      avgIndustry: avg((g) => g.industryKnowledgeScore),
+      strongYesCount: graded.filter((a) => a.grade!.recommendation === 'strong_yes').length,
+      yesCount: graded.filter((a) => a.grade!.recommendation === 'yes').length,
+    };
+  }, [assignments]);
+
+  const rubricRadarData = useMemo(() => {
+    if (!gradeStats) {
+      return [
+        { area: 'Code Quality', value: 0 },
+        { area: 'Agent Usage', value: 0 },
+        { area: 'Prompting', value: 0 },
+        { area: 'Domain', value: 0 },
+      ];
+    }
+    return [
+      { area: 'Code Quality', value: gradeStats.avgCodeQuality },
+      { area: 'Agent Usage', value: gradeStats.avgAgentUsage },
+      { area: 'Prompting', value: gradeStats.avgPrompting },
+      { area: 'Domain', value: gradeStats.avgIndustry },
+    ];
+  }, [gradeStats]);
+
+  const signalTrendData = useMemo(() => {
+    const graded = assignments
+      .filter((a) => a.grade !== null)
+      .sort((a, b) => new Date(a.grade!.gradedAt).getTime() - new Date(b.grade!.gradedAt).getTime());
+
+    if (graded.length < 2) return [];
+    return graded.map((a, i) => ({
+      day: `#${i + 1}`,
+      quality: a.grade!.codeQualityScore,
+      agent: a.grade!.agentUsageScore,
+    }));
+  }, [assignments]);
+
+  const leaderboard = useMemo(() => {
+    const gradedCandidates = assignments
+      .filter((a) => a.grade !== null && a.sessionId)
+      .map((a) => ({
+        ...a,
+        score: a.grade!.compositeScore,
+        headline: RECOMMENDATION_LABEL[a.grade!.recommendation] ?? a.grade!.recommendation,
+      }))
+      .sort((l, r) => r.score - l.score)
+      .slice(0, 3);
+
+    // Fall back to activity-based heuristic if no grades yet
+    if (gradedCandidates.length === 0) {
+      return assignments
+        .filter((a) => a.submission)
+        .map((a, index) => ({
+          ...a,
+          score: null as number | null,
           headline:
             index % 3 === 0
               ? 'Strong product finisher'
@@ -177,10 +244,11 @@ export default function AssessmentResults() {
                 ? 'High-signal agent operator'
                 : 'Careful debugger with clean handoff',
         }))
-        .sort((left, right) => right.score - left.score)
-        .slice(0, 3),
-    [assignments],
-  );
+        .slice(0, 3);
+    }
+
+    return gradedCandidates;
+  }, [assignments]);
 
   if (isLoading) {
     return (
@@ -334,8 +402,12 @@ export default function AssessmentResults() {
                         <p className="text-[10px] uppercase tracking-[0.24em] text-white/40">Candidate {index + 1}</p>
                         <p className="mt-2 text-sm text-white/84">{candidate.candidateEmail}</p>
                       </div>
-                      <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs text-primary">
-                        {candidate.score}
+                      <div className={`rounded-full border px-3 py-1 text-xs ${
+                        candidate.score !== null
+                          ? 'border-primary/20 bg-primary/10 text-primary'
+                          : 'border-white/10 bg-white/5 text-white/30'
+                      }`}>
+                        {candidate.score !== null ? candidate.score : 'Ungraded'}
                       </div>
                     </div>
                     <p className="mt-3 text-sm leading-6 text-white/60">{candidate.headline}</p>
@@ -363,20 +435,49 @@ export default function AssessmentResults() {
           </section>
 
           <section className="mt-6 grid gap-4 md:grid-cols-3">
-            {[
-              ['Reviewer confidence', '91%', 'High confidence that the best submissions show both strong implementation and disciplined agent use.'],
-              ['Median ship quality', '84', 'Fake cohort score tuned to feel like a strong Gitty hiring funnel.'],
-              ['Codebase carry-through', '97%', 'Most candidates preserved the company repo context from brief to final implementation.'],
-            ].map(([label, value, detail]) => (
-              <div key={label} className="editorial-panel rounded-[1.75rem] p-6">
-                <div className="flex items-center gap-2 text-white/42">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <p className="text-xs uppercase tracking-[0.28em]">{label}</p>
+            {gradeStats ? (
+              [
+                {
+                  label: 'Avg composite score',
+                  value: gradeStats.avgComposite,
+                  detail: `Across ${gradeStats.count} graded submission${gradeStats.count !== 1 ? 's' : ''}.`,
+                },
+                {
+                  label: 'Advance candidates',
+                  value: gradeStats.strongYesCount + gradeStats.yesCount,
+                  detail: `${gradeStats.strongYesCount} strong yes + ${gradeStats.yesCount} yes based on AI evaluation.`,
+                },
+                {
+                  label: 'Avg code quality',
+                  value: gradeStats.avgCodeQuality,
+                  detail: `Mean code quality score across graded submissions.`,
+                },
+              ].map(({ label, value, detail }) => (
+                <div key={label} className="editorial-panel rounded-[1.75rem] p-6">
+                  <div className="flex items-center gap-2 text-white/42">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <p className="text-xs uppercase tracking-[0.28em]">{label}</p>
+                  </div>
+                  <p className={`mt-4 text-4xl ${scoreColor(typeof value === 'number' ? value : 0)}`}>{value}</p>
+                  <p className="mt-3 text-sm leading-6 text-white/58">{detail}</p>
                 </div>
-                <p className="mt-4 text-4xl">{value}</p>
-                <p className="mt-3 text-sm leading-6 text-white/58">{detail}</p>
-              </div>
-            ))}
+              ))
+            ) : (
+              [
+                ['Avg composite score', '—', 'Grade submissions to see cohort averages.'],
+                ['Advance candidates', '—', 'Grade submissions to identify strong candidates.'],
+                ['Avg code quality', '—', 'Grade submissions to see code quality scores.'],
+              ].map(([label, value, detail]) => (
+                <div key={label as string} className="editorial-panel rounded-[1.75rem] p-6">
+                  <div className="flex items-center gap-2 text-white/42">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <p className="text-xs uppercase tracking-[0.28em]">{label}</p>
+                  </div>
+                  <p className="mt-4 text-4xl text-white/20">{value}</p>
+                  <p className="mt-3 text-sm leading-6 text-white/35">{detail}</p>
+                </div>
+              ))
+            )}
           </section>
 
           <section className="mt-6 flex gap-2">
@@ -401,6 +502,11 @@ export default function AssessmentResults() {
                 <TableRow className="border-white/8">
                   <TableHead className="text-white/45">Email</TableHead>
                   <TableHead className="text-white/45">Status</TableHead>
+                  <TableHead className="text-white/45">
+                    <Sparkles className="inline h-3.5 w-3.5 mr-1 text-primary" />
+                    Score
+                  </TableHead>
+                  <TableHead className="text-white/45">Decision</TableHead>
                   <TableHead className="text-white/45">
                     <Clock className="inline h-3.5 w-3.5 mr-1" />
                     Duration
@@ -454,6 +560,24 @@ export default function AssessmentResults() {
                         </span>
                       </TableCell>
                       <TableCell>
+                        {assignment.grade ? (
+                          <span className={`text-sm font-medium tabular-nums ${scoreColor(assignment.grade.compositeScore)}`}>
+                            {assignment.grade.compositeScore}
+                          </span>
+                        ) : (
+                          <span className="text-white/20">{assignment.submission ? 'pending' : '\u2014'}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {assignment.grade ? (
+                          <span className="text-xs text-white/55">
+                            {RECOMMENDATION_LABEL[assignment.grade.recommendation] ?? assignment.grade.recommendation}
+                          </span>
+                        ) : (
+                          <span className="text-white/20">\u2014</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {assignment.submission
                           ? formatDuration(assignment.submission.sessionDurationSeconds)
                           : '\u2014'}
@@ -483,7 +607,7 @@ export default function AssessmentResults() {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={10}
                       className="h-24 text-center text-white/45"
                     >
                       No candidates match this filter.
