@@ -54,7 +54,7 @@ export default function TalentDiscovery() {
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
-  const [inviteResult, setInviteResult] = useState<{ created: number; skipped: string[] } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ created: number; skipped: string[]; emailsSent: number; emailsFailed: number } | null>(null);
 
   useEffect(() => {
     apiFetch('/api/company/assessments')
@@ -129,8 +129,8 @@ export default function TalentDiscovery() {
         const body = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(body.error ?? 'Invite failed');
       }
-      const result = await res.json() as { created: number; skipped: string[] };
-      setInviteResult(result);
+      const result = await res.json() as { created: number; skipped: string[]; emailsSent?: number; emailsFailed?: number };
+      setInviteResult({ created: result.created, skipped: result.skipped, emailsSent: result.emailsSent ?? 0, emailsFailed: result.emailsFailed ?? 0 });
       setPhase('done');
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : 'Invite failed');
@@ -427,16 +427,26 @@ export default function TalentDiscovery() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
                 <Star className="h-8 w-8 text-primary" />
               </div>
-              <h2 className="mt-5 text-2xl">Assignments created</h2>
+              <h2 className="mt-5 text-2xl">Invites sent</h2>
               <p className="mt-3 text-sm text-white/55">
-                <span className="text-white">{inviteResult.created}</span> assignment{inviteResult.created !== 1 ? 's' : ''} created.
+                <span className="text-white">{inviteResult.created}</span> assignment{inviteResult.created !== 1 ? 's' : ''} created
+                {inviteResult.emailsSent > 0 && (
+                  <> · <span className="text-emerald-300">{inviteResult.emailsSent} email{inviteResult.emailsSent !== 1 ? 's' : ''} sent</span></>
+                )}
                 {inviteResult.skipped.length > 0 && (
-                  <> {inviteResult.skipped.length} duplicate{inviteResult.skipped.length !== 1 ? 's' : ''} skipped.</>
+                  <> · {inviteResult.skipped.length} duplicate{inviteResult.skipped.length !== 1 ? 's' : ''} skipped</>
                 )}
               </p>
-              <p className="mt-2 text-xs text-white/40">
-                Candidates will see the assessment when they sign in with their email address.
-              </p>
+              {inviteResult.emailsSent === 0 && inviteResult.created > 0 && (
+                <p className="mt-2 text-xs text-amber-400/70">
+                  Email sending is not configured. Add RESEND_API_KEY to the backend .env to send invite emails automatically.
+                </p>
+              )}
+              {inviteResult.emailsSent > 0 && (
+                <p className="mt-2 text-xs text-white/40">
+                  Candidates can also sign in at any time with their email address to claim the assessment.
+                </p>
+              )}
               <div className="mt-6 flex justify-center gap-3">
                 <button
                   onClick={() => { setPhase('search'); setDescription(''); setCandidates([]); setSelected(new Set()); setInviteResult(null); }}

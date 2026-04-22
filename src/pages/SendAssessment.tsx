@@ -50,6 +50,7 @@ export default function SendAssessment() {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastInviteResult, setLastInviteResult] = useState<{ created: number; emailsSent: number } | null>(null);
 
   async function load() {
     if (!id) return;
@@ -134,6 +135,8 @@ export default function SendAssessment() {
         throw new Error(body.error ?? 'Failed to assign assessment');
       }
 
+      const result = await res.json() as { created: number; emailsSent?: number };
+      setLastInviteResult({ created: result.created, emailsSent: result.emailsSent ?? 0 });
       setEmailInput('');
       await load();
     } catch (err) {
@@ -366,9 +369,19 @@ export default function SendAssessment() {
                 className="mt-4 h-11 w-full rounded-full"
               >
                 <SendHorizonal className="mr-2 h-4 w-4" />
-                {saving ? 'Assigning...' : 'Create assignments'}
+                {saving ? 'Sending...' : 'Create assignments & send emails'}
               </LiquidButton>
               {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
+              {lastInviteResult && !error && (
+                <div className="mt-4 rounded-[1.1rem] border border-emerald-500/20 bg-emerald-500/8 px-4 py-3">
+                  <p className="text-sm text-emerald-300">
+                    {lastInviteResult.created} assignment{lastInviteResult.created !== 1 ? 's' : ''} created
+                    {lastInviteResult.emailsSent > 0
+                      ? ` · ${lastInviteResult.emailsSent} invite email${lastInviteResult.emailsSent !== 1 ? 's' : ''} sent`
+                      : ' · configure RESEND_API_KEY to send emails'}
+                  </p>
+                </div>
+              )}
             </div>
           </section>
         </div>
