@@ -5,12 +5,17 @@ import LiquidButton from '@/components/LiquidButton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiFetch } from '@/lib/api';
-import { ArrowLeft, Clock3, Library, SendHorizonal, Sparkles, WandSparkles } from 'lucide-react';
+import { validateRepoSource } from '@/lib/repoSource';
+import { ArrowLeft, Clock3, GitBranch, Library, SendHorizonal, Sparkles, WandSparkles } from 'lucide-react';
 
 const JOB_DESCRIPTION_MAX = 10_000;
 const EXAM_SPECIFICS_MAX = 5_000;
 const PART_COUNT_MIN = 1;
 const PART_COUNT_MAX = 26;
+const REPO_INSTRUCTIONS_MAX = 10_000;
+const REPO_TITLE_MAX = 160;
+
+type SourceMode = 'ai' | 'repo';
 
 interface SkeletonListItem {
   id: string;
@@ -69,6 +74,7 @@ function deriveAssessmentSummary(prompt: string): string {
 
 export default function CreateAssessment() {
   const navigate = useNavigate();
+  const [sourceMode, setSourceMode] = useState<SourceMode>('ai');
   const [generationPrompt, setGenerationPrompt] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('90');
   const [intakeRepoUrl, setIntakeRepoUrl] = useState('');
@@ -76,6 +82,11 @@ export default function CreateAssessment() {
   const [intakeJobDescription, setIntakeJobDescription] = useState('');
   const [intakeExamSpecifics, setIntakeExamSpecifics] = useState('');
   const [intakePartCount, setIntakePartCount] = useState('1');
+  const [repoTitle, setRepoTitle] = useState('');
+  const [repoUrl, setRepoUrl] = useState('');
+  const [repoRef, setRepoRef] = useState('');
+  const [repoInstructions, setRepoInstructions] = useState('');
+  const [repoValidationError, setRepoValidationError] = useState<string | null>(null);
   const [builderReady, setBuilderReady] = useState(false);
   const [isGeneratingPreset, setIsGeneratingPreset] = useState(false);
   const [submitting, setSubmitting] = useState<'draft' | 'published' | null>(null);
@@ -119,38 +130,16 @@ export default function CreateAssessment() {
     setError(null);
 
     try {
-      const trimmedPrompt = compiledPrompt.trim();
-      const parsedPartCount = Number(intakePartCount);
-      const normalizedPartCount = Math.max(
-        PART_COUNT_MIN,
-        Math.min(
-          PART_COUNT_MAX,
-          Number.isFinite(parsedPartCount) && parsedPartCount >= PART_COUNT_MIN
-            ? Math.floor(parsedPartCount)
-            : 1,
-        ),
-      );
-      const trimmedSpecifics = intakeExamSpecifics.trim();
+      const payload = sourceMode === 'repo' ? buildRepoPayload(status) : buildAiPayload(status);
+      if (payload === null) {
+        setSubmitting(null);
+        return;
+      }
+
       const res = await apiFetch('/api/company/assessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: derivedTitle,
-          summary: derivedSummary,
-          instructionsMd: trimmedPrompt,
-          durationMinutes: Number(durationMinutes),
-          sourceBrief: trimmedPrompt,
-          skeletonId: skeletonId ?? undefined,
-          authoringConfig: {
-            mode: 'single',
-            stages: [],
-            partCount: normalizedPartCount,
-            examSpecifics: trimmedSpecifics || undefined,
-          },
-          status,
-          generateWorkspace: true,
-          demoMode: false,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -168,6 +157,79 @@ export default function CreateAssessment() {
       setError(err instanceof Error ? err.message : 'Failed to create assessment workspace');
       setSubmitting(null);
     }
+  }
+
+  function buildAiPayload(status: 'draft' | 'published') {
+    const trimmedPrompt = compiledPrompt.trim();
+    const parsedPartCount = Number(intakePartCount);
+    const normalizedPartCount = Math.max(
+      PART_COUNT_MIN,
+      Math.min(
+        PART_COUNT_MAX,
+        Number.isFinite(parsedPartCount) && parsedPartCount >= PART_COUNT_MIN
+          ? Math.floor(parsedPartCount)
+          : 1,
+      ),
+    );
+    const trimmedSpecifics = intakeExamSpecifics.trim();
+    return {
+      title: derivedTitle,
+      summary: derivedSummary,
+      instructionsMd: trimmedPrompt,
+      durationMinutes: Number(durationMinutes),
+      sourceBrief: trimmedPrompt,
+      skeletonId: skeletonId ?? undefined,
+      authoringConfig: {
+        mode: 'single' as const,
+        stages: [],
+        partCount: normalizedPartCount,
+        examSpecifics: trimmedSpecifics || undefined,
+      },
+      status,
+      generateWorkspace: true,
+      demoMode: false,
+    };
+  }
+
+  function buildRepoPayload(status: 'draft' | 'published') {
+    setRepoValidationError(null);
+
+    const trimmedTitle = repoTitle.trim();
+    if (trimmedTitle.length < 3) {
+      setError('Title must be at least 3 characters.');
+      return null;
+    }
+
+    const trimmedInstructions = repoInstructions.trim();
+    if (trimmedInstructions.length < 10) {
+      setError('Candidate instructions must be at least 10 characters.');
+      return null;
+    }
+
+    const validation = validateRepoSource(repoUrl, repoRef);
+    if (!validation.ok) {
+      setRepoValidationError(validation.error);
+      setError(validation.error);
+      return null;
+    }
+
+    const duration = Number(durationMinutes);
+    if (!Number.isFinite(duration) || duration < 1) {
+      setError('Duration is required.');
+      return null;
+    }
+
+    return {
+      title: trimmedTitle.slice(0, REPO_TITLE_MAX),
+      summary: trimmedInstructions.slice(0, 280),
+      instructionsMd: trimmedInstructions,
+      durationMinutes: duration,
+      sourceType: 'repo' as const,
+      sourceRepoUrl: validation.url,
+      sourceRepoRef: validation.ref,
+      status,
+      demoMode: false,
+    };
   }
 
   return (
@@ -191,10 +253,14 @@ export default function CreateAssessment() {
                     Gitty intake
                   </p>
                   <h1 className="mt-4 text-4xl leading-tight md:text-5xl">
-                    Describe the role. Gitty generates the sprint.
+                    {sourceMode === 'ai'
+                      ? 'Describe the role. Gitty generates the sprint.'
+                      : 'Bring your own repo. Candidates land in it.'}
                   </h1>
                   <p className="mt-4 max-w-xl text-sm leading-7 text-white/60">
-                    Tell Gitty who you're hiring and optionally attach a company repo for extra context. Then Gitty builds the assessment brief and reviewer flow for you.
+                    {sourceMode === 'ai'
+                      ? "Tell Gitty who you're hiring and optionally attach a company repo for extra context. Then Gitty builds the assessment brief and reviewer flow for you."
+                      : 'Paste a public repo URL. Gitty shallow-clones it, strips secrets and build artifacts, and drops the tree into the candidate workspace exactly as-is. No AI rewriting.'}
                   </p>
                 </div>
 
@@ -212,6 +278,9 @@ export default function CreateAssessment() {
                     </div>
                   ) : (
                     <div className="space-y-5">
+                      <SourceModeSelector value={sourceMode} onChange={setSourceMode} />
+                      {sourceMode === 'ai' ? (
+                      <>
                       <div>
                         <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
                           Role you are hiring for
@@ -352,6 +421,139 @@ export default function CreateAssessment() {
                         <WandSparkles className="mr-2 h-4 w-4" />
                         Generate assessment
                       </LiquidButton>
+                      </>
+                      ) : (
+                      <>
+                        <div>
+                          <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                            Assessment title
+                          </label>
+                          <Input
+                            value={repoTitle}
+                            onChange={(event) => setRepoTitle(event.target.value.slice(0, REPO_TITLE_MAX))}
+                            maxLength={REPO_TITLE_MAX}
+                            className="h-12 rounded-[1.1rem] border-white/10 bg-white/5"
+                            placeholder="Backend take-home: billing service"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-white/45">
+                            Repo URL
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] tracking-[0.2em] text-white/45">
+                              Public HTTPS
+                            </span>
+                          </label>
+                          <Input
+                            value={repoUrl}
+                            onChange={(event) => {
+                              setRepoUrl(event.target.value);
+                              if (repoValidationError) setRepoValidationError(null);
+                            }}
+                            className="h-12 rounded-[1.1rem] border-white/10 bg-white/5 font-mono text-sm"
+                            placeholder="https://github.com/acme/widget"
+                          />
+                          <p className="mt-2 text-sm text-white/50">
+                            github.com, gitlab.com, or bitbucket.org. Public repositories only.
+                          </p>
+                          {repoValidationError && (
+                            <p className="mt-2 text-sm text-rose-300">{repoValidationError}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-white/45">
+                            Branch / tag
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] tracking-[0.2em] text-white/45">
+                              Optional
+                            </span>
+                          </label>
+                          <Input
+                            value={repoRef}
+                            onChange={(event) => setRepoRef(event.target.value)}
+                            className="h-12 rounded-[1.1rem] border-white/10 bg-white/5 font-mono text-sm"
+                            placeholder="main"
+                          />
+                          <p className="mt-2 text-sm text-white/50">
+                            Leave blank for the default branch.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                            Candidate instructions
+                          </label>
+                          <Textarea
+                            value={repoInstructions}
+                            onChange={(event) =>
+                              setRepoInstructions(event.target.value.slice(0, REPO_INSTRUCTIONS_MAX))
+                            }
+                            maxLength={REPO_INSTRUCTIONS_MAX}
+                            className="min-h-[180px] rounded-[1.25rem] border-white/10 bg-white/5 text-sm leading-7"
+                            placeholder="What should the candidate do with this repo? e.g. 'Add pagination to the /orders endpoint. Tests must pass. Don't modify the auth layer.'"
+                          />
+                          <div className="mt-2 flex items-center justify-between gap-3 text-sm text-white/50">
+                            <p>This is what the candidate sees alongside the repo. No AI rewriting — it's shown verbatim.</p>
+                            <span
+                              className={`shrink-0 tabular-nums text-xs ${
+                                repoInstructions.length >= REPO_INSTRUCTIONS_MAX
+                                  ? 'text-rose-300'
+                                  : repoInstructions.length > REPO_INSTRUCTIONS_MAX * 0.9
+                                    ? 'text-amber-300'
+                                    : 'text-white/40'
+                              }`}
+                            >
+                              {repoInstructions.length.toLocaleString()} / {REPO_INSTRUCTIONS_MAX.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-[11px] uppercase tracking-[0.26em] text-white/45">
+                            Duration (minutes)
+                          </label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={480}
+                            value={durationMinutes}
+                            onChange={(event) => setDurationMinutes(event.target.value)}
+                            className="h-12 w-32 rounded-[1.1rem] border-white/10 bg-white/5"
+                          />
+                        </div>
+
+                        <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] p-4">
+                          <p className="text-[11px] uppercase tracking-[0.26em] text-white/42">What Gitty will do</p>
+                          <div className="mt-3 space-y-2 text-sm leading-6 text-white/62">
+                            <p>Shallow-clone the repo (HEAD only, single branch)</p>
+                            <p>Strip .git, node_modules, dist, .env, and known secret files</p>
+                            <p>Cap total size at 5 MiB and 2,000 files</p>
+                            <p>Snapshot the filtered tree into the candidate workspace</p>
+                          </div>
+                        </div>
+
+                        {error && <p className="text-sm text-rose-300">{error}</p>}
+
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <LiquidButton
+                            onClick={() => handleSubmit('draft')}
+                            disabled={submitting !== null}
+                            variant="outline"
+                            className="h-12 rounded-full px-5"
+                          >
+                            {submitting === 'draft' ? 'Ingesting draft…' : 'Save draft'}
+                          </LiquidButton>
+                          <LiquidButton
+                            onClick={() => handleSubmit('published')}
+                            disabled={submitting !== null}
+                            className="h-12 rounded-full px-6"
+                          >
+                            <GitBranch className="mr-2 h-4 w-4" />
+                            {submitting === 'published' ? 'Ingesting and publishing…' : 'Ingest and publish'}
+                          </LiquidButton>
+                        </div>
+                      </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -552,6 +754,50 @@ export default function CreateAssessment() {
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SourceModeSelector({
+  value,
+  onChange,
+}: {
+  value: SourceMode;
+  onChange: (next: SourceMode) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] uppercase tracking-[0.26em] text-white/45">Source</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => onChange('ai')}
+          className={`flex flex-col rounded-[1.1rem] border px-4 py-3 text-left transition-colors ${
+            value === 'ai'
+              ? 'border-primary/60 bg-primary/10'
+              : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
+          }`}
+        >
+          <span className="text-sm text-white/88">AI-generated</span>
+          <span className="mt-1 text-xs leading-5 text-white/55">
+            Gitty remixes a skeleton to match the brief.
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('repo')}
+          className={`flex flex-col rounded-[1.1rem] border px-4 py-3 text-left transition-colors ${
+            value === 'repo'
+              ? 'border-primary/60 bg-primary/10'
+              : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
+          }`}
+        >
+          <span className="text-sm text-white/88">Public repo (as-is)</span>
+          <span className="mt-1 text-xs leading-5 text-white/55">
+            Paste a URL. No AI rewriting — candidates see it unchanged.
+          </span>
+        </button>
       </div>
     </div>
   );
