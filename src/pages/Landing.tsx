@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import GlassNav from "@/components/GlassNav";
 import LiquidButton from "@/components/LiquidButton";
 import Tilt3D from "@/components/Tilt3D";
-import { ArrowRight, BrainCircuit, GitBranch, LayoutDashboard, Sparkles, Terminal, Zap } from "lucide-react";
+import { ArrowRight, BrainCircuit, GitBranch, LayoutDashboard, Terminal, Zap } from "lucide-react";
 
 const FEATURES = [
   {
@@ -97,13 +97,6 @@ const Landing = () => {
           </div>
 
           <div className="depth-layer-a relative z-10 max-w-3xl text-center">
-            {/* Pill badge */}
-            <div className="badge-3d mb-8 inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/62 backdrop-blur-sm">
-              <span className="pulse-dot h-2 w-2 rounded-full bg-primary" />
-              <span>Now in v1 — Single-prompt assessments</span>
-              <Sparkles className="h-3.5 w-3.5 text-primary/70" />
-            </div>
-
             <p className="mb-6 font-sans text-sm uppercase tracking-[0.3em] text-white/50">
               Hiring, Reimagined
             </p>
@@ -119,15 +112,12 @@ const Landing = () => {
               Built for teams who refuse to settle for boring.
             </p>
 
-            <div className="flex flex-col justify-center gap-4 sm:flex-row">
+            <div className="pointer-events-auto relative z-20 flex flex-col justify-center gap-4 sm:flex-row">
               <LiquidButton size="lg" onClick={() => navigate("/login")}>
                 I'm an Applicant
               </LiquidButton>
               <LiquidButton size="lg" variant="outline" onClick={() => navigate("/dashboard")}>
                 I'm Hiring
-              </LiquidButton>
-              <LiquidButton size="lg" variant="ghost" onClick={() => navigate("/candidates")}>
-                See Recruiter Demo
               </LiquidButton>
             </div>
 
