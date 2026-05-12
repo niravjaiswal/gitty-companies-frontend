@@ -42,6 +42,8 @@ interface VariationMetrics {
 
 type AdversarialVerdict = 'too-easy' | 'calibrated' | 'too-hard' | 'broken-tests' | 'tests-cheated';
 
+type TestModificationKind = 'none' | 'additions_only' | 'modified_existing';
+
 interface AdversarialMetrics {
   verdict: AdversarialVerdict;
   rationale: string;
@@ -51,6 +53,7 @@ interface AdversarialMetrics {
   avg_cost_usd: number;
   hardcoding_observed: boolean;
   test_files_modified: boolean;
+  test_modification_kind?: TestModificationKind;
   judgment_calls_observed: boolean;
   architectural_decisions_observed: boolean;
   num_runs: number;
@@ -550,7 +553,15 @@ function GenerationInsights({ metrics }: { metrics: GenerationMetrics }) {
           <div className="mt-3 flex flex-wrap gap-1.5 text-[10px]">
             {adversarial.judgment_calls_observed && <Flag label="judgment calls" tone="emerald" />}
             {adversarial.architectural_decisions_observed && <Flag label="architectural" tone="emerald" />}
-            {adversarial.test_files_modified && <Flag label="test edits" tone="rose" />}
+            {adversarial.test_modification_kind === 'modified_existing' && (
+              <Flag label="test edits" tone="rose" />
+            )}
+            {adversarial.test_modification_kind === 'additions_only' && (
+              <Flag label="tests added" tone="amber" />
+            )}
+            {!adversarial.test_modification_kind && adversarial.test_files_modified && (
+              <Flag label="test edits" tone="rose" />
+            )}
             {adversarial.hardcoding_observed && <Flag label="hardcoding" tone="rose" />}
           </div>
         </div>
@@ -568,11 +579,13 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Flag({ label, tone }: { label: string; tone: 'emerald' | 'rose' }) {
+function Flag({ label, tone }: { label: string; tone: 'emerald' | 'rose' | 'amber' }) {
   const cls =
     tone === 'emerald'
       ? 'border-emerald-400/30 bg-emerald-400/[0.08] text-emerald-200'
-      : 'border-rose-400/30 bg-rose-400/[0.08] text-rose-200';
+      : tone === 'amber'
+        ? 'border-amber-400/30 bg-amber-400/[0.08] text-amber-200'
+        : 'border-rose-400/30 bg-rose-400/[0.08] text-rose-200';
   return (
     <span className={`rounded-full border px-2 py-0.5 uppercase tracking-[0.14em] ${cls}`}>
       {label}
