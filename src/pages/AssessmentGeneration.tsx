@@ -16,6 +16,60 @@ interface RepoIngestMetadata {
   droppedReasons?: Record<string, number>;
 }
 
+interface VariationSelection {
+  axis_id: string;
+  value: string | number | boolean;
+  is_default: boolean;
+  rationale: string;
+}
+
+interface VariationMetrics {
+  axes_count: number;
+  non_default_count: number;
+  planner_input_tokens: number;
+  planner_output_tokens: number;
+  executor: {
+    turns: number;
+    cost_usd: number;
+    duration_ms: number;
+    verified: boolean;
+    sacred_violations: string[];
+  } | null;
+  overall_rationale: string;
+  selections: VariationSelection[];
+  not_applicable: string[];
+}
+
+type AdversarialVerdict = 'too-easy' | 'calibrated' | 'too-hard' | 'broken-tests' | 'tests-cheated';
+
+interface AdversarialMetrics {
+  verdict: AdversarialVerdict;
+  rationale: string;
+  solved_rate: number;
+  median_turns: number;
+  median_edits: number;
+  avg_cost_usd: number;
+  hardcoding_observed: boolean;
+  test_files_modified: boolean;
+  judgment_calls_observed: boolean;
+  architectural_decisions_observed: boolean;
+  num_runs: number;
+}
+
+interface GenerationMetrics {
+  skeleton_id: string;
+  primary: {
+    turns: number;
+    cost_usd: number;
+    duration_ms: number;
+    verified: boolean;
+  };
+  repair: { turns: number; cost_usd: number; verified: boolean } | null;
+  variation: VariationMetrics | null;
+  adversarial: AdversarialMetrics | null;
+  final_verified: boolean;
+}
+
 interface AssessmentSnapshot {
   id: string;
   title: string;
@@ -26,6 +80,7 @@ interface AssessmentSnapshot {
   generationError: string | null;
   generationStartedAt: string | null;
   generationCompletedAt: string | null;
+  generationMetrics: GenerationMetrics | null;
   createdAt: string;
   sourceType: SourceType;
   sourceRepoUrl: string | null;
@@ -226,6 +281,10 @@ export default function AssessmentGeneration() {
               )}
             </div>
 
+            {assessment.generationMetrics && (
+              <GenerationInsights metrics={assessment.generationMetrics} />
+            )}
+
             {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
           </section>
         </div>
@@ -405,5 +464,118 @@ function FailedState({
         </button>
       </div>
     </div>
+  );
+}
+
+const ADVERSARIAL_VERDICT_STYLES: Record<AdversarialVerdict, { label: string; tone: string }> = {
+  'calibrated': { label: 'Calibrated', tone: 'border-emerald-400/40 bg-emerald-400/[0.08] text-emerald-200' },
+  'too-easy': { label: 'Too Easy', tone: 'border-amber-400/40 bg-amber-400/[0.08] text-amber-200' },
+  'too-hard': { label: 'Too Hard', tone: 'border-amber-400/40 bg-amber-400/[0.08] text-amber-200' },
+  'broken-tests': { label: 'Broken Tests', tone: 'border-rose-400/40 bg-rose-400/[0.08] text-rose-200' },
+  'tests-cheated': { label: 'Tests Cheated', tone: 'border-rose-400/40 bg-rose-400/[0.08] text-rose-200' },
+};
+
+function GenerationInsights({ metrics }: { metrics: GenerationMetrics }) {
+  const { variation, adversarial } = metrics;
+  if (!variation && !adversarial) return null;
+
+  return (
+    <div className="mt-6 space-y-4 border-t border-white/8 pt-6">
+      <p className="text-[11px] uppercase tracking-[0.38em] text-white/40">Generation Insights</p>
+
+      {variation && (
+        <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.03] p-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-medium text-white/85">Variation Plan</p>
+            <p className="text-[11px] text-white/45">
+              {variation.non_default_count}/{variation.axes_count} axes flexed
+              {variation.executor && ` · $${variation.executor.cost_usd.toFixed(2)} · ${variation.executor.turns} turns`}
+            </p>
+          </div>
+          {variation.overall_rationale && (
+            <p className="mt-2 text-xs leading-5 text-white/55">{variation.overall_rationale}</p>
+          )}
+          {variation.selections.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {variation.selections.map((sel) => (
+                <li key={sel.axis_id} className="flex items-start gap-2 text-xs">
+                  <span
+                    className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                      sel.is_default
+                        ? 'border-white/15 bg-white/[0.04] text-white/55'
+                        : 'border-primary/40 bg-primary/[0.1] text-primary/90'
+                    }`}
+                  >
+                    {sel.is_default ? 'default' : 'flexed'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-white/80">
+                      {sel.axis_id} = {JSON.stringify(sel.value)}
+                    </p>
+                    {sel.rationale && (
+                      <p className="mt-0.5 text-white/50">{sel.rationale}</p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {variation.executor && variation.executor.sacred_violations.length > 0 && (
+            <div className="mt-3 rounded-md border border-rose-400/30 bg-rose-400/5 px-3 py-2 text-[11px] text-rose-200">
+              Sacred-anchor violations: {variation.executor.sacred_violations.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+
+      {adversarial && (
+        <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.03] p-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-medium text-white/85">Adversarial Gate</p>
+            <span
+              className={`rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em] ${
+                ADVERSARIAL_VERDICT_STYLES[adversarial.verdict]?.tone ?? 'border-white/15 text-white/65'
+              }`}
+            >
+              {ADVERSARIAL_VERDICT_STYLES[adversarial.verdict]?.label ?? adversarial.verdict}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-white/55">{adversarial.rationale}</p>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-[11px] sm:grid-cols-4">
+            <Stat label="Solved" value={`${(adversarial.solved_rate * 100).toFixed(0)}%`} />
+            <Stat label="Edits" value={String(adversarial.median_edits)} />
+            <Stat label="Turns" value={String(adversarial.median_turns)} />
+            <Stat label="Cost" value={`$${adversarial.avg_cost_usd.toFixed(2)}`} />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5 text-[10px]">
+            {adversarial.judgment_calls_observed && <Flag label="judgment calls" tone="emerald" />}
+            {adversarial.architectural_decisions_observed && <Flag label="architectural" tone="emerald" />}
+            {adversarial.test_files_modified && <Flag label="test edits" tone="rose" />}
+            {adversarial.hardcoding_observed && <Flag label="hardcoding" tone="rose" />}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2">
+      <p className="text-[9px] uppercase tracking-[0.22em] text-white/40">{label}</p>
+      <p className="mt-1 text-sm text-white/85">{value}</p>
+    </div>
+  );
+}
+
+function Flag({ label, tone }: { label: string; tone: 'emerald' | 'rose' }) {
+  const cls =
+    tone === 'emerald'
+      ? 'border-emerald-400/30 bg-emerald-400/[0.08] text-emerald-200'
+      : 'border-rose-400/30 bg-rose-400/[0.08] text-rose-200';
+  return (
+    <span className={`rounded-full border px-2 py-0.5 uppercase tracking-[0.14em] ${cls}`}>
+      {label}
+    </span>
   );
 }
