@@ -133,6 +133,7 @@ export default function AIUsageTab({ sessionId, transcripts }: AIUsageTabProps) 
     Record<number, ParsedMessage[]>
   >({});
   const [loadingId, setLoadingId] = useState<number | null>(null);
+  const [errorIds, setErrorIds] = useState<Set<number>>(() => new Set());
 
   const totals = transcripts.reduce(
     (acc, t) => ({
@@ -145,28 +146,39 @@ export default function AIUsageTab({ sessionId, transcripts }: AIUsageTabProps) 
   );
 
   const loadTranscript = useCallback(
-    async (transcriptId: number) => {
+    async (transcriptId: number, force = false) => {
       if (loadedTranscripts[transcriptId]) return;
+      if (errorIds.has(transcriptId) && !force) return;
+      setErrorIds((current) => {
+        const next = new Set(current);
+        next.delete(transcriptId);
+        return next;
+      });
       setLoadingId(transcriptId);
       try {
         const res = await apiFetch(
           `/api/sessions/${sessionId}/claude-transcripts/${transcriptId}`,
         );
-        if (res.ok) {
-          const data = await res.json();
-          const messages = parseTranscriptJsonl(data.transcript_jsonl ?? '');
-          setLoadedTranscripts((prev) => ({
-            ...prev,
-            [transcriptId]: messages,
-          }));
+        if (!res.ok) {
+          throw new Error(`Failed to load transcript ${transcriptId}`);
         }
+        const data = await res.json();
+        const messages = parseTranscriptJsonl(data.transcript_jsonl ?? '');
+        setLoadedTranscripts((prev) => ({
+          ...prev,
+          [transcriptId]: messages,
+        }));
       } catch {
-        // Silently fail
+        setErrorIds((current) => {
+          const next = new Set(current);
+          next.add(transcriptId);
+          return next;
+        });
       } finally {
         setLoadingId(null);
       }
     },
-    [sessionId, loadedTranscripts],
+    [sessionId, loadedTranscripts, errorIds],
   );
 
   if (transcripts.length === 0) {
@@ -231,6 +243,19 @@ export default function AIUsageTab({ sessionId, transcripts }: AIUsageTabProps) 
                 {loadingId === transcript.id ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  </div>
+                ) : errorIds.has(transcript.id) ? (
+                  <div className="flex flex-col items-center gap-3 py-6">
+                    <p className="text-center text-sm text-white/45">
+                      Failed to load transcript.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => loadTranscript(transcript.id, true)}
+                      className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/70 transition-colors hover:bg-white/8"
+                    >
+                      Try again
+                    </button>
                   </div>
                 ) : loadedTranscripts[transcript.id] ? (
                   <div className="space-y-3 py-2">
